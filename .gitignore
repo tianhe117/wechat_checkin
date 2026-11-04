@@ -8,3 +8,4 @@ __pycache__/
 artifacts/
 controller/adb/
 controller/config.json
+manager/compose.override.yaml

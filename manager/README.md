@@ -25,6 +25,22 @@ docker compose logs -f
 
 镜像只安装 Python 运行依赖，将当前 `manager/` 目录映射到容器 `/app`。代码、页面和资源直接使用宿主文件，运行数据保存在宿主 `manager/data/`。运行一个管理端实例即可。
 
+### 修改宿主机端口
+
+在 `manager/` 目录复制[覆盖配置示例](compose.override.example.yaml)：
+
+```bash
+cp compose.override.example.yaml compose.override.yaml
+```
+
+修改 `compose.override.yaml` 中的宿主机端口 `8080`，容器端口保持 `8000`，然后执行：
+
+```bash
+docker compose up -d
+```
+
+Compose 自动加载该覆盖文件，修改端口后无需重新构建镜像。本机 `compose.override.yaml` 已加入 Git 忽略规则。示例使用 `!override` 完整替换端口映射，需要 [Docker Compose 2.24.4 或以上版本](https://docs.docker.com/reference/compose-file/merge/#replace-value)。
+
 ## 更新
 
 在 `manager/` 目录执行，普通代码更新只需拉取并重启：
