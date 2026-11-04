@@ -12,6 +12,7 @@ import time
 import urllib.error
 import urllib.request
 
+from .bark import screenshot_signer
 from .controller_client import ControllerClient, ControllerError, ControllerImageError
 from .planner import Planner, SLOTS, controller_configured, workday
 from .storage import now, stamp
@@ -319,12 +320,14 @@ class Service:
             self.enqueue_notice(run_id)
 
     @staticmethod
-    def _send_bark(settings, title, body, link):
+    def _send_bark(settings, title, body, link, image=""):
         if not settings["bark_key"]:
             return "not_configured", "未配置 Bark 密钥"
         payload = {"device_key": settings["bark_key"], "title": title, "body": body, "group": "打卡助手"}
         if link:
             payload["url"] = link
+        if image:
+            payload["image"] = image
         request = urllib.request.Request(settings["bark_server"].rstrip("/")+"/push", data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"}, method="POST")
         try:
             with urllib.request.urlopen(request, timeout=5) as response:
@@ -363,8 +366,12 @@ class Service:
             if not run["screenshot"]:
                 body += "\n本次未采集到截图。"
             link = settings["public_url"].rstrip("/")+"/runs/"+identifier if settings["public_url"] else ""
+            image = ""
+            if run["screenshot"] and settings["public_url"]:
+                token = screenshot_signer(self.store.get("_secret")).dumps(identifier)
+                image = settings["public_url"].rstrip("/")+"/bark/screenshots/"+token+".png"
             self.store.change_run(identifier, bark_status="sending", bark_error="")
-            status, error = self.sender(settings, title, body, link)
+            status, error = self.sender(settings, title, body, link, image)
             self.store.change_run(identifier, bark_status=status, bark_error=error)
         else:
             entry = next((n for n in self.store.get("_notices", []) if n["id"] == identifier), None)

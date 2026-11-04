@@ -7,9 +7,11 @@ import time
 from urllib.parse import urlsplit
 
 from flask import Flask, abort, flash, redirect, render_template, request, send_file, session, url_for
+from itsdangerous import BadData
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from . import PROJECT_ROOT
+from .bark import IMAGE_MAX_AGE, screenshot_signer
 from .controller_client import ControllerClient
 from .planner import MODES, SLOTS, controller_configured, workday
 from .storage import Store, TZ
@@ -42,7 +44,7 @@ def create_app(directory=None, *, store=None, service=None, secure_cookie=True):
 
     @app.before_request
     def authorize():
-        if request.endpoint in {"static", "manifest", "app_icon"}:
+        if request.endpoint in {"static", "manifest", "app_icon", "bark_screenshot"}:
             return
         if request.endpoint != "login" and not logged_in():
             return redirect(url_for("login", next=request.full_path), code=303)
@@ -289,6 +291,14 @@ def create_app(directory=None, *, store=None, service=None, secure_cookie=True):
             abort(404, description="截图已清理或不可用")
         return send_file(path, mimetype="image/png", conditional=False, download_name=run_id+".png")
 
+    @app.get("/bark/screenshots/<token>.png")
+    def bark_screenshot(token):
+        try:
+            run_id = screenshot_signer(store.get("_secret")).loads(token, max_age=IMAGE_MAX_AGE)
+        except BadData:
+            abort(404, description="截图链接已失效")
+        return screenshot(run_id)
+
     @app.get("/notices/<identifier>")
     def notice_page(identifier):
         entry = next((item for item in store.get("_notices", []) if item["id"] == identifier), None)
@@ -296,10 +306,6 @@ def create_app(directory=None, *, store=None, service=None, secure_cookie=True):
             abort(404)
         return render_template("notice.html", title="消息通知", subtitle="通知发送结果", active="settings", entry=entry,
                                refresh=2 if entry["status"] == "queued" else None)
-
-    @app.get("/install")
-    def install():
-        return render_template("install.html", title="添加到手机桌面", subtitle="首次添加，以后从图标直接进入")
 
     @app.get("/manifest.webmanifest")
     def manifest():

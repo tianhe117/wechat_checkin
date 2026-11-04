@@ -17,9 +17,6 @@
 .records-items{overflow:auto;align-content:start}
 .record-entry{flex-shrink:0;display:flow-root;padding:4px 0}
 @media(min-width:700px) and (max-height:500px){.record-entry .date-label{display:none}}
-.install-card .ios-guide,.install-card .android-guide{display:none}
-.install-card:has(#platform-ios:checked) .ios-guide{display:block}
-.install-card:has(#platform-android:checked) .android-guide{display:block}
 .login-card .notice{margin-bottom:12px}
 .fit-detail .step-list li small{white-space:nowrap}
 .form-content,.summary-panel,.steps-panel{overflow:auto}

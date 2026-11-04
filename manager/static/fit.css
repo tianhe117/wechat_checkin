@@ -161,11 +161,6 @@ h3{font-size:13px}
 .page-running .progress{margin:12px 0 6px}
 .page-running .form-actions{margin-top:auto}
 .page-running .narrow>.form-help{margin:0!important;font-size:10px}
-.install-card{max-width:720px;align-self:center;justify-content:center}
-.install-brand{margin-bottom:16px;gap:13px}
-.install-card .instruction-list{margin:0;padding-left:20px}
-.install-card .instruction-list li{font-size:12px;padding:10px 0}
-.install-card>.form-actions{margin-top:auto}
 .login-page{height:100dvh;min-height:0;padding:16px}
 .login-card{padding:25px}
 .login-brand{margin-bottom:20px}
@@ -180,7 +175,6 @@ h3{font-size:13px}
 @media(min-width:821px){
   .sidebar{padding-top:28px}
   .content-stage>.notice{flex-shrink:0}
-  .page-install .instruction-list,.page-install-android .instruction-list{margin-top:8px}
   .steps-panel .step-list{display:grid;grid-template-columns:1fr 1fr;gap:7px 25px;grid-auto-flow:row}
 }
 
@@ -296,10 +290,6 @@ h3{font-size:13px}
   .progress-head p{font-size:10px}
   .page-running .step-list li{padding:3px 0;line-height:1.4}
   .page-running .field-divider{margin:8px 0}
-  .install-brand{gap:10px;margin-bottom:12px}
-  .install-brand h2{font-size:14px}
-  .install-brand p{font-size:10px}
-  .install-card .instruction-list li{font-size:11px;padding:10px 0}
   .result-page{padding:22px 15px}
 }
 
@@ -471,10 +461,6 @@ h3{font-size:13px}
   .page-running .narrow>.form-help{display:none}
   .page-running .field-divider{margin:4px 0}
   .page-running .form-actions{padding-top:4px}
-  .install-brand{margin-bottom:8px}
-  .install-brand img{width:30px}
-  .install-card .instruction-list li{padding:4px;font-size:10px}
-  .install-card .form-actions{margin-top:6px}
   .calendar{gap:3px}
   .calendar-top{margin-bottom:3px}
   .legend{margin-bottom:2px}

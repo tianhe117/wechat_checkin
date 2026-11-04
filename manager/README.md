@@ -12,6 +12,14 @@ Flask / Jinja2 / SQLite 服务，通过 Linux Docker 部署，HTTPS 反向代理
 
 包名可留空，手动和自动任务均使用控制端 `default_package`（示例为 `com.tencent.wework`）；填写包名则覆盖默认值。完整应用流程结束后锁屏；独立截图先亮屏、解锁并等待 0.5 秒，再采集当前界面。控制端与 Bark 密钥留空保存会保持原值，页面不回显密钥。
 
+## Bark 截图通知
+
+在“设置 → 通知”填写 Bark 服务地址、设备密钥和“公网访问地址”。公网访问地址填写 Bark 所在手机可直接访问的管理端 HTTPS 根地址（例如 `https://checkin.example.com`）。
+
+执行结果有截图时，通知自动通过 Bark 的 `image` 参数附图，展开通知即可查看；点击通知仍打开需登录的任务详情。图片使用仅对本条记录有效的签名链接，无需登录，发送后 24 小时过期；重发通知会重新生成链接，不重新操作手机。未填写公网访问地址或未采集到截图时，仍发送文字通知；设备提醒和连接测试消息仅发送文字。已有历史记录也可通过重发通知附上截图。
+
+Bark 客户端需能直接下载图片，管理端前的额外登录验证也不能拦截 `/bark/screenshots/`；图片下载失败时 Bark 仍显示文字通知。参数说明见 [Bark 官方文档](https://github.com/Finb/Bark/blob/master/docs/params.md#image)。
+
 ## Docker 部署
 
 首次部署或从原部署切换到目录挂载时，在 Linux 的 `manager/` 目录执行：

@@ -1,14 +1,19 @@
 """Manager business flows against the existing controller with a fake phone."""
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
+import json
 from pathlib import Path
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
+from urllib.parse import urlsplit
 
+from itsdangerous import TimestampSigner
 from werkzeug.serving import make_server, WSGIRequestHandler
 
 import test_controller_client as fixtures
+from src.bark import IMAGE_MAX_AGE, screenshot_signer
 from src.controller_client import ControllerClient, ControllerTransportError
 from src.storage import Store, TZ, stamp
 from src.tasks import Service
@@ -78,12 +83,90 @@ class ManagerTests(unittest.TestCase):
         self.assertNotIn("base64", run["remote_result"]["screenshot"])
         self.assertNotIn("api_key", self.store.dispatch(run_id))
         notices = []
-        self.service.sender = lambda settings, title, body, link: (notices.append((title, body, link)) or ("sent", ""))
+        self.service.sender = lambda settings, title, body, link, image="": (notices.append((title, body, link, image)) or ("sent", ""))
         self.service.send_notice("run", run_id)
         self.service.send_notice("run", run_id)  # Explicit resend does not repeat phone execution.
         self.assertEqual(self.store.run(run_id)["bark_status"], "sent")
         self.assertEqual(len(notices), 2)
+        self.assertEqual(notices[0][3], "")  # A public URL is required to attach a screenshot.
         self.assertEqual(self.adb.captures, 1)
+
+    def test_bark_image_payload_signed_access_expiry_and_resend(self):
+        self.store.update({"bark_key": "test-bark-key", "public_url": "https://checkin.example/"})
+        run_id = self.service.submit("full", "bark-image")
+        self.service.execute(run_id)
+        app = create_app(store=self.store, service=self.service, secure_cookie=False)
+        browser = app.test_client()  # Bark downloads without a browser login cookie.
+
+        with patch("src.tasks.urllib.request.urlopen") as send:
+            send.return_value.__enter__.return_value.read.return_value = b'{"code":200}'
+            self.service.send_notice("run", run_id)
+            request = send.call_args.args[0]
+            payload = json.loads(request.data)
+            self.assertEqual(request.full_url, "https://api.day.app/push")
+            self.assertEqual(payload["url"], "https://checkin.example/runs/" + run_id)
+            self.assertEqual(payload["device_key"], "test-bark-key")
+            self.assertEqual(self.store.run(run_id)["bark_status"], "sent")
+            image = urlsplit(payload["image"])
+            self.assertEqual(image.netloc, "checkin.example")
+            self.assertNotIn("test-bark-key", image.path)
+            self.assertNotIn(fixtures.KEY, image.path)
+            with browser.get(image.path) as response:
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.mimetype, "image/png")
+                self.assertEqual(response.data, fixtures.PNG)
+                self.assertEqual(response.headers["Cache-Control"], "no-store")
+            self.assertEqual(browser.get("/screenshots/" + run_id).status_code, 303)
+            self.assertEqual(browser.get("/runs/" + run_id).status_code, 303)
+
+            token = image.path.rsplit("/", 1)[1][:-4]
+            prefix, signature = token.rsplit(".", 1)
+            invalid = prefix + "." + ("a" if signature[0] != "a" else "b") + signature[1:]
+            self.assertEqual(browser.get("/bark/screenshots/" + invalid + ".png").status_code, 404)
+            missing = screenshot_signer(self.store.get("_secret")).dumps("missing-run")
+            self.assertEqual(browser.get("/bark/screenshots/" + missing + ".png").status_code, 404)
+            self.assertEqual(browser.get("/bark/screenshots/invalid.png").status_code, 404)
+
+            future = int(time.time()) + IMAGE_MAX_AGE + 1
+            with patch.object(TimestampSigner, "get_timestamp", return_value=future):
+                self.assertEqual(browser.get(image.path).status_code, 404)
+                self.service.send_notice("run", run_id)
+                resent = json.loads(send.call_args.args[0].data)
+                self.assertNotEqual(resent["image"], payload["image"])
+                with browser.get(urlsplit(resent["image"]).path) as response:
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.data, fixtures.PNG)
+            self.assertEqual(self.adb.captures, 1)  # Resending only refreshes the image link.
+
+        (self.store.screenshots / self.store.run(run_id)["screenshot"]).unlink()
+        self.assertEqual(browser.get(image.path).status_code, 404)
+
+    def test_bark_text_fallback_and_events_do_not_attach_images(self):
+        self.store.update({"bark_key": "test-bark-key"})
+        run_id = self.service.submit("screenshot", "bark-text-only")
+        self.service.execute(run_id)
+        with patch("src.tasks.urllib.request.urlopen") as send:
+            send.return_value.__enter__.return_value.read.return_value = b'{"code":200}'
+            self.service.send_notice("run", run_id)
+            payload = json.loads(send.call_args.args[0].data)
+            self.assertNotIn("image", payload)
+            self.assertNotIn("url", payload)
+            self.assertEqual(self.store.run(run_id)["bark_status"], "sent")
+
+            self.store.update({"public_url": "https://checkin.example"})
+            self.store.change_run(run_id, screenshot=None)
+            self.service.send_notice("run", run_id)
+            payload = json.loads(send.call_args.args[0].data)
+            self.assertNotIn("image", payload)
+            self.assertIn("本次未采集到截图。", payload["body"])
+            self.assertIn("url", payload)
+
+            notice_id = self.service.create_notice("连接测试", "文字通知")
+            self.service.send_notice("event", notice_id)
+            payload = json.loads(send.call_args.args[0].data)
+            self.assertNotIn("image", payload)
+            self.assertEqual(payload["body"], "文字通知")
+            self.assertEqual(self.store.get("_notices")[0]["status"], "sent")
 
     def test_automatic_result_updates_plan_and_does_not_run_again(self):
         run_id = self.automatic_run()
@@ -278,10 +361,14 @@ class ManagerTests(unittest.TestCase):
         with browser.session_transaction() as session:
             csrf = session["csrf"]
         self.service.probe()
-        for page in ("/", "/settings/app", "/settings/device", "/settings/bark", "/settings/account", "/settings/schedule", "/plans", "/plans/edit", "/runs", "/install"):
+        for page in ("/", "/settings/app", "/settings/device", "/settings/bark", "/settings/account", "/settings/schedule", "/plans", "/plans/edit", "/runs"):
             result = browser.get(page)
             self.assertEqual(result.status_code, 200, page)
             self.assertNotIn(fixtures.KEY.encode(), result.data)
+            self.assertNotIn(b'href="/install"', result.data)
+        self.assertEqual(browser.get("/install").status_code, 404)
+        self.assertNotIn("桌面入口".encode(), browser.get("/").data)
+        self.assertNotIn("添加到手机桌面".encode(), browser.get("/").data)
         result = browser.post("/settings/device", data={"controller_url": self.url + "/", "controller_api_key": "",
                               "serial": fixtures.SERIAL, "csrf_token": csrf, "request_id": "web-test", "action": "test-device"})
         run_id = result.location.rsplit("/", 1)[1]

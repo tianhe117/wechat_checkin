@@ -6,7 +6,7 @@
 
 ```mermaid
 flowchart LR
-    Browser[浏览器 / 手机主屏幕入口] -->|HTTPS| Nginx["Nginx（用户自行配置）"]
+    Browser[浏览器] -->|HTTPS| Nginx["Nginx（用户自行配置）"]
     Nginx -->|HTTP| Manager[Linux 管理端]
     Manager -->|局域网 HTTP + Bearer API key| Controller[Windows 控制端]
     Controller -->|ADB / USB| Phone[Android 手机]
@@ -37,7 +37,7 @@ flowchart LR
 | `manager/src/tasks.py` | 任务队列、执行与恢复、调度、设备监测和通知 |
 | `manager/src/controller_client.py` | 控制端 API 客户端、超时、响应与截图校验 |
 | `manager/src/storage.py` | 设置、计划、业务记录和派发快照的持久化 |
-| `manager/templates/`、`manager/static/` | 页面模板、样式、交互脚本和桌面入口资源 |
+| `manager/templates/`、`manager/static/` | 页面模板、样式、交互脚本和图标资源 |
 
 ## 4. 一次任务的数据流
 

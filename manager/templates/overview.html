@@ -1,5 +1,4 @@
 {% extends 'base.html' %}{% from 'macros.html' import icon,csrf,operation with context %}
-{% block actions %}<a class="btn small" href="{{ url_for('install') }}">{{ icon('download') }}桌面入口</a>{% endblock %}
 {% block content %}<div class="fit-dashboard">
 <section class="hero home-next"><div class="hero-top"><span class="eyebrow">下一次自动任务</span><span class="badge">{{ '已暂停' if settings.paused else '控制端待配置' if not settings.controller_configured else '自动运行中' }}</span></div>
 <span class="hero-clock mono {{ 'paused' if settings.paused else '' }}">{% if settings.paused %}已暂停{% elif next_plan %}{{ next_plan.scheduled_at|clock }}{% else %}--:--:--{% endif %}</span>
