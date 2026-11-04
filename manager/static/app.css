@@ -15,7 +15,20 @@
 .record-info{overflow:hidden}
 .record-info small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .records-items{overflow:auto;align-content:start}
-.record-entry{flex-shrink:0;display:flow-root;padding:4px 0}
+.records-card{position:relative}
+.records-loading{display:none;position:absolute;top:50%;left:0;right:0;text-align:center;font-size:12px;color:var(--muted)}
+.records-fitting .records-loading{display:block}
+.records-fitting .records-items,.records-fitting .pagination{visibility:hidden}
+.record-entry{flex-shrink:0;display:flow-root;padding:2px 0}
+.records-card .filter-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px}
+.records-card .filter-form label{min-width:0;grid-template-columns:minmax(0,1fr)}
+.records-card .filter-form .field{width:100%;min-width:0;max-width:100%;min-inline-size:0;box-sizing:border-box;overflow:hidden}
+@media(max-width:820px){
+  .records-card .record-item{padding:8px 11px;margin-bottom:3px}
+  .records-card .date-label{margin-bottom:3px}
+  .records-card .filter-form .field,.records-card .filter-form .btn{height:32px;min-height:32px;padding-top:5px;padding-bottom:5px}
+}
+@media(max-width:360px){.records-card .filter-form .btn{grid-column:1/-1}.records-card .filter-form{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
 @media(min-width:700px) and (max-height:500px){.record-entry .date-label{display:none}}
 .login-card .notice{margin-bottom:12px}
 .fit-detail .step-list li small{white-space:nowrap}

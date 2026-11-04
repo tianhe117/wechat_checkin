@@ -1,6 +1,7 @@
 {% extends 'base.html' %}{% from 'macros.html' import icon with context %}
 {% block content %}
 <section class="card records-card" data-page="{{ page }}" data-per-page="{{ per_page }}">
+  <p class="records-loading" role="status">正在加载记录…</p>
   <form class="filter-form" method="get">
     <input type="hidden" name="per_page" value="{{ per_page }}">
     <label>开始日期<input class="field" type="date" name="from" value="{{ start }}"></label>
@@ -27,4 +28,3 @@
   </nav>
 </section>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static',filename='records.js') }}" defer></script>{% endblock %}
