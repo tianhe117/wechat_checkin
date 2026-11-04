@@ -24,3 +24,21 @@
 .step-error{display:block;color:var(--amber);font-size:10px;overflow-wrap:anywhere}
 @media(max-width:820px){.hero-device-meta{font-size:9px;gap:6px}.hero-device-meta>.flex{max-width:63%}.form-actions form .btn{min-height:34px}.home-actions form .btn{font-size:10px;min-height:34px;padding:6px 5px}.record-right{flex-shrink:0}.fit-detail .detail-result p{font-size:10px}}
 @media(max-height:580px){.content-stage>.notice{font-size:9px;padding:5px 9px}.logout-row{font-size:9px}.fit-detail .detail-result p{-webkit-line-clamp:2}.home-actions form .btn{min-height:31px}.fit-detail .step-list li{padding:2px 0}}
+.run-confirmation{width:min(360px,calc(100vw - 28px));max-height:calc(100dvh - 28px);margin:auto;padding:22px;border:1px solid var(--line);border-radius:18px;background:#fff;color:var(--ink);box-shadow:0 16px 60px #173a2930;overflow:auto}
+.run-confirmation::backdrop{background:#172d2166;backdrop-filter:blur(2px)}
+.run-confirmation h2{font-size:20px;margin:0 0 6px}
+.run-confirmation #run-confirmation-description{font-size:12px;color:var(--muted)}
+.confirmation-sequence{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;list-style:none;padding:0;margin:18px 0}
+.confirmation-sequence li{display:grid;place-items:center;min-height:36px;border-radius:8px;background:var(--soft);font-size:20px;font-weight:600}
+.confirmation-sequence li.is-complete{background:var(--green);color:#fff}
+.confirmation-keypad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.confirmation-keypad button{min-height:50px;border:1px solid var(--line);border-radius:10px;background:#f6f8f3;color:var(--ink);font:inherit;font-size:23px;cursor:pointer;touch-action:manipulation}
+.confirmation-keypad button.is-complete{background:var(--soft);color:var(--green);border-color:#b6cba6}
+.confirmation-keypad button:disabled{cursor:default}
+.confirmation-status{min-height:20px;margin:14px 0;font-size:12px;color:var(--muted)}
+.confirmation-status.is-error{color:#9b4430}
+.confirmation-actions{display:grid;grid-template-columns:1fr 1.6fr;gap:10px;border-top:1px solid var(--line);padding-top:14px}
+.confirmation-actions .btn{min-height:42px;justify-content:center}
+.confirmation-actions .btn:disabled{opacity:.45;cursor:default}
+.confirmation-fallback form{margin-top:14px}
+@media(max-width:520px){.run-confirmation{margin:auto auto calc(14px + env(safe-area-inset-bottom));padding:20px}}

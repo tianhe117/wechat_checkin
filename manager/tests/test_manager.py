@@ -2,6 +2,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 import json
+import re
 from pathlib import Path
 import tempfile
 import time
@@ -54,6 +55,28 @@ class ManagerTests(unittest.TestCase):
         service.poll_seconds = .01
         service.not_found_seconds = .02
         return service
+
+    def web_browser(self):
+        app = create_app(store=self.store, service=self.service, secure_cookie=False)
+        app.config["TESTING"] = True
+        browser = app.test_client()
+        with browser.session_transaction() as session:
+            session.update(authenticated=True, auth_version=self.store.get("_auth_version"), csrf="test-csrf")
+        return browser, "test-csrf"
+
+    def confirmation_sequence(self, response):
+        if response.is_json:
+            payload = response.get_json()
+        else:
+            match = re.search(rb'id="initial-run-confirmation">(.*?)</script>', response.data, re.S)
+            self.assertIsNotNone(match, "The confirmation page must provide a digit challenge")
+            payload = json.loads(match.group(1))
+        question = payload["confirmation"]
+        sequence = question["sequence"]
+        self.assertRegex(sequence, r"^[1-9]{6}$")
+        self.assertEqual(len(set(sequence)), 6)
+        self.assertEqual(sorted(question["grid"]), list("123456789"))
+        return sequence
 
     def automatic_run(self):
         self.service.planner.ensure(self.at.date(), self.at.date())
@@ -390,12 +413,145 @@ class ManagerTests(unittest.TestCase):
         browser.post("/settings/device", data={"controller_url": self.url, "serial": "", "csrf_token": csrf})
         self.assertEqual(self.store.settings()["serial"], "")
         browser.post("/settings/app", data={"package": "", "wait_seconds": "0", "csrf_token": csrf})
-        result = browser.post("/runs", data={"kind": "full", "request_id": "web-default-package", "csrf_token": csrf})
+        data = {"kind": "full", "request_id": "web-default-package", "csrf_token": csrf}
+        confirmation = browser.post("/runs", data=data)
+        self.assertEqual(confirmation.status_code, 200)
+        result = browser.post("/runs", data={**data, "answer": str(self.confirmation_sequence(confirmation))})
         run_id = result.location.rsplit("/", 1)[1]
         self.service.execute(run_id)
         self.assertEqual(self.store.run(run_id)["remote_result"]["package"], "com.example.default")
         self.assertIn("使用控制端默认包名".encode(), browser.get("/").data)
         self.assertNotIn("应用待配置".encode(), browser.get("/").data)
+
+    def test_manual_confirmation_validates_six_digit_sequence_before_queueing(self):
+        browser, csrf = self.web_browser()
+        data = {"kind": "full", "request_id": "confirmed-manual", "csrf_token": csrf}
+        self.assertEqual(browser.post("/runs", data={"kind": "full", "request_id": "no-csrf"}).status_code, 400)
+        self.assertEqual(browser.application.test_client().post("/runs", data=data).status_code, 303)
+        # A direct POST cannot supply its own challenge or skip the confirmation.
+        with patch("src.web.secrets.SystemRandom") as rng:
+            rng.return_value.sample.side_effect = [list("123456"), list("987654321")]
+            result = browser.post("/runs", data={**data, "sequence": "2", "answer": "2", "confirmed": "1"})
+        self.assertEqual(result.status_code, 400)
+        answer = self.confirmation_sequence(result)
+        self.assertEqual(answer, "123456")
+        refreshed = browser.post("/runs", data=data)
+        self.assertEqual(refreshed.status_code, 200)
+        self.assertEqual(self.confirmation_sequence(refreshed), answer)
+        for invalid in ("", "12345", "1234567", "123465", "112345", "000000", "wrong", "9" * 5000):
+            with self.subTest(answer=invalid[:20]):
+                result = browser.post("/runs", data={**data, "answer": invalid, "sequence": invalid}, headers={"Accept": "application/json"})
+                self.assertEqual(result.status_code, 400)
+                self.assertEqual(self.confirmation_sequence(result), answer)
+                self.assertIn("点选顺序不正确", result.get_json()["error"])
+        with self.store.connect() as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM runs").fetchone()[0], 0)
+        self.assertTrue(self.service.phone_queue.empty())
+        self.assertEqual(self.adb.commands, [])
+        accepted = browser.post("/runs", data={**data, "answer": answer})
+        self.assertEqual(accepted.status_code, 303)
+        run_id = accepted.location.rsplit("/", 1)[1]
+        self.assertEqual(self.store.run(run_id)["status"], "queued")
+        duplicate = browser.post("/runs", data={**data, "answer": answer})
+        self.assertEqual(duplicate.location, accepted.location)
+        self.assertEqual(self.service.phone_queue.qsize(), 1)
+        self.service.execute(run_id)
+        self.assertEqual(self.store.run(run_id)["status"], "completed")
+        self.assertEqual(self.adb.captures, 1)
+        result = browser.post("/runs", data={**data, "request_id": "next-manual", "answer": answer})
+        self.assertEqual(result.status_code, 400)
+        self.confirmation_sequence(result)
+        with self.store.connect() as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM runs").fetchone()[0], 1)
+
+    def test_manual_confirmation_is_bound_to_session_request_and_can_be_cancelled(self):
+        browser, csrf = self.web_browser()
+        first = {"kind": "full", "request_id": "first-tab", "csrf_token": csrf}
+        second = {**first, "request_id": "second-tab", "return_to": "https://untrusted.example"}
+        with patch("src.web.secrets.SystemRandom") as rng:
+            rng.return_value.sample.side_effect = [list("123456"), list("987654321"), list("654321"), list("123456789")]
+            first_answer = self.confirmation_sequence(browser.post("/runs", data=first))
+            second_answer = self.confirmation_sequence(browser.post("/runs", data=second))
+        self.assertNotEqual(first_answer, second_answer)
+        self.assertEqual(browser.post("/runs", data={**first, "answer": second_answer}).status_code, 400)
+        self.assertEqual(browser.post("/runs", data={**first, "request_id": "changed-id", "answer": first_answer}).status_code, 400)
+        other_browser, other_csrf = self.web_browser()
+        self.assertEqual(other_browser.post("/runs", data={**first, "csrf_token": other_csrf, "answer": first_answer}).status_code, 400)
+        cancelled = browser.post("/runs", data={**second, "action": "cancel"})
+        self.assertEqual(cancelled.status_code, 303)
+        self.assertEqual(cancelled.location, "/")
+        result = browser.post("/runs", data={**second, "answer": second_answer})
+        self.assertEqual(result.status_code, 400)
+        self.confirmation_sequence(result)
+        with self.store.connect() as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM runs").fetchone()[0], 0)
+        self.assertTrue(self.service.phone_queue.empty())
+        self.assertEqual(self.adb.commands, [])
+        accepted = browser.post("/runs", data={**first, "answer": first_answer})
+        self.assertEqual(accepted.status_code, 303)
+        self.assertEqual(self.service.phone_queue.qsize(), 1)
+
+    def test_modal_json_challenge_confirm_cancel_and_old_challenge_upgrade(self):
+        browser, csrf = self.web_browser()
+        headers = {"Accept": "application/json"}
+        data = {"kind": "full", "request_id": "modal-json", "csrf_token": csrf}
+        result = browser.post("/runs", data=data, headers=headers)
+        self.assertEqual(result.status_code, 200)
+        self.assertTrue(result.is_json)
+        answer = self.confirmation_sequence(result)
+        self.assertNotIn(fixtures.KEY.encode(), result.data)
+        partial = browser.post("/runs", data={**data, "answer": answer[:5]}, headers=headers)
+        self.assertEqual(partial.status_code, 400)
+        self.assertTrue(partial.is_json)
+        self.assertTrue(self.service.phone_queue.empty())
+        accepted = browser.post("/runs", data={**data, "answer": answer}, headers=headers)
+        self.assertEqual(accepted.status_code, 200)
+        location = accepted.get_json()["redirect"]
+        self.assertTrue(location.startswith("/runs/"))
+        duplicate = browser.post("/runs", data={**data, "answer": answer}, headers=headers)
+        self.assertEqual(duplicate.get_json()["redirect"], location)
+        self.assertEqual(self.service.phone_queue.qsize(), 1)
+        run_id = location.rsplit("/", 1)[1]
+        self.service.execute(run_id)
+        self.assertEqual(self.adb.captures, 1)
+        data["request_id"] = "cancel-json"
+        answer = self.confirmation_sequence(browser.post("/runs", data=data, headers=headers))
+        cancelled = browser.post("/runs", data={**data, "action": "cancel"}, headers=headers)
+        self.assertEqual(cancelled.get_json(), {"cancelled": True})
+        self.assertEqual(browser.post("/runs", data={**data, "answer": answer}, headers=headers).status_code, 400)
+        with browser.session_transaction() as session:
+            session["run_confirmations"] = {"legacy-question": {"left": 27, "right": 48, "back": "/"}}
+        upgraded = browser.post("/runs", data={**data, "request_id": "legacy-question", "answer": "75"}, headers=headers)
+        self.assertEqual(upgraded.status_code, 400)
+        self.confirmation_sequence(upgraded)
+
+    def test_history_retry_requires_confirmation_and_other_manual_kinds_stay_direct(self):
+        original_id = self.service.submit("full", "original-history-run")
+        self.service.execute(original_id)
+        browser, csrf = self.web_browser()
+        detail_path = "/runs/" + original_id
+        detail = browser.get(detail_path)
+        token = re.search(rb'name="request_id" value="([^"]+)"', detail.data).group(1).decode()
+        self.assertNotEqual(token, "original-history-run")
+        data = {"kind": "full", "request_id": token, "csrf_token": csrf, "return_to": detail_path}
+        self.assertEqual(browser.post("/runs", data=data).status_code, 200)
+        cancelled = browser.post("/runs", data={**data, "action": "cancel"})
+        self.assertEqual(cancelled.location, detail_path)
+        self.assertEqual(self.adb.captures, 1)
+        answer = self.confirmation_sequence(browser.post("/runs", data=data))
+        accepted = browser.post("/runs", data={**data, "answer": answer})
+        new_id = accepted.location.rsplit("/", 1)[1]
+        self.assertNotEqual(new_id, original_id)
+        self.service.execute(new_id)
+        self.assertEqual(self.store.run(original_id)["status"], "completed")
+        self.assertEqual(self.adb.captures, 2)
+        for kind in ("screenshot", "test"):
+            result = browser.post("/runs", data={"kind": kind, "request_id": "direct-" + kind, "csrf_token": csrf})
+            self.assertEqual(result.status_code, 303)
+            run_id = result.location.rsplit("/", 1)[1]
+            self.assertEqual(self.store.run(run_id)["kind"], kind)
+            self.service.execute(run_id)
+            self.assertEqual(self.store.run(run_id)["status"], "completed")
 
     def test_records_pagination_keeps_order_filters_and_requested_page_size(self):
         from flask import template_rendered

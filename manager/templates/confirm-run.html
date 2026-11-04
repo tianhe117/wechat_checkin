@@ -1,0 +1,4 @@
+{% extends 'base.html' %}{% from 'macros.html' import csrf with context %}
+{% block content %}<section class="card confirmation-fallback"><p>请在弹窗中完成点选并确认本次打卡。</p><noscript><p>点选确认需要启用 JavaScript，当前尚未执行打卡。</p></noscript>
+<form action="{{ url_for('run_create') }}" method="post">{{ csrf() }}<input type="hidden" name="kind" value="full"><input type="hidden" name="request_id" value="{{ operation_id }}"><input type="hidden" name="return_to" value="{{ return_to }}"><button class="btn" type="submit">重新打开确认</button></form></section>
+<script type="application/json" id="initial-run-confirmation">{{ confirmation|tojson }}</script>{% endblock %}

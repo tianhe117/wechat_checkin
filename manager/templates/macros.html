@@ -19,5 +19,5 @@
 {%- endmacro %}
 {% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
 {% macro operation(kind, label, symbol='play', css='') %}
-<form action="{{ url_for('run_create') }}" method="post">{{ csrf() }}<input type="hidden" name="request_id" value="{{ request_id() }}"><input type="hidden" name="kind" value="{{ kind }}"><button class="btn {{ css }}" type="submit">{{ icon(symbol) }}{{ label }}</button></form>
+<form action="{{ url_for('run_create') }}" method="post">{{ csrf() }}<input type="hidden" name="request_id" value="{{ request_id() }}"><input type="hidden" name="kind" value="{{ kind }}"><input type="hidden" name="return_to" value="{{ request.path }}"><button class="btn {{ css }}" type="submit">{{ icon(symbol) }}{{ label }}</button></form>
 {% endmacro %}

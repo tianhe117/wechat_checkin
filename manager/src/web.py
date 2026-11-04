@@ -2,6 +2,7 @@
 from datetime import date, datetime, timedelta
 import calendar
 from pathlib import Path
+import re
 import secrets
 import time
 from urllib.parse import urlsplit
@@ -237,15 +238,66 @@ def create_app(directory=None, *, store=None, service=None, secure_cookie=True):
 
     @app.post("/runs")
     def run_create():
+        wants_json = request.accept_mimetypes.best == "application/json"
+
+        def navigate(location):
+            return {"redirect": location} if wants_json else redirect(location, code=303)
+
         try:
             token = request.form.get("request_id", "")
             if not token:
                 raise ValueError("请求已过期，请刷新页面")
-            identifier = service.submit(request.form.get("kind", "full"), token)
+            kind = request.form.get("kind", "full")
+            confirmations = None
+            if kind == "full":
+                if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", token):
+                    raise ValueError("请求已过期，请刷新页面")
+                confirmations = session.get("run_confirmations", {})
+                question = confirmations.get(token)
+                if question and "sequence" not in question:
+                    question = None  # Replace pending confirmations from the old arithmetic UI.
+                    confirmations.pop(token, None)
+                if request.form.get("action") == "cancel":
+                    confirmations.pop(token, None)
+                    session["run_confirmations"] = confirmations
+                    return {"cancelled": True} if wants_json else navigate(question["back"] if question else url_for("overview"))
+                # Repeated submissions return the original task after its challenge was consumed.
+                with store.connect() as db:
+                    previous = db.execute("SELECT id FROM runs WHERE request_id=?", (token,)).fetchone()
+                if previous:
+                    confirmations.pop(token, None)
+                    session["run_confirmations"] = confirmations
+                    return navigate(url_for("run_detail", run_id=previous["id"]))
+                if not controller_configured(store.settings()):
+                    raise ValueError("请先在设备设置中填写控制端地址和密钥")
+                if not question or request.form.get("answer", "") != question["sequence"]:
+                    if not question:
+                        back = request.form.get("return_to", "")
+                        if back != "/" and not re.fullmatch(r"/runs/[a-f0-9]{24}", back):
+                            back = url_for("overview")
+                        rng = secrets.SystemRandom()
+                        question = {"sequence": "".join(rng.sample("123456789", 6)),
+                                    "grid": rng.sample("123456789", 9), "back": back}
+                        # Bound cookie size when users open confirmations in multiple tabs.
+                        if len(confirmations) >= 8:
+                            confirmations.pop(next(iter(confirmations)))
+                        confirmations[token] = question
+                    session["run_confirmations"] = confirmations
+                    error = "点选顺序不正确，请重新点选。" if "answer" in request.form else ""
+                    payload = {"confirmation": {"request_id": token, "sequence": question["sequence"], "grid": question["grid"]}, "error": error}
+                    status = 400 if error else 200
+                    if wants_json:
+                        return payload, status
+                    return render_template("confirm-run.html", title="确认打卡", subtitle="请按顺序点击 6 个数字",
+                                           confirmation=payload, operation_id=token, return_to=question["back"]), status
+            identifier = service.submit(kind, token)
+            if confirmations is not None:
+                confirmations.pop(token, None)
+                session["run_confirmations"] = confirmations
         except ValueError as error:
             flash(str(error), "error")
-            return redirect(url_for("settings_page", tab="device" if not controller_configured(store.settings()) else "app"), code=303)
-        return redirect(url_for("run_detail", run_id=identifier), code=303)
+            return navigate(url_for("settings_page", tab="device" if not controller_configured(store.settings()) else "app"))
+        return navigate(url_for("run_detail", run_id=identifier))
 
     @app.get("/runs")
     def runs_page():
