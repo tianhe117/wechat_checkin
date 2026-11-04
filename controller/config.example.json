@@ -1,0 +1,13 @@
+{
+  "adb_dir": "./adb",
+  "api_key": "REPLACE_WITH_A_RANDOM_API_KEY",
+  "host": "0.0.0.0",
+  "port": 8765,
+  "default_serial": "",
+  "default_package": "com.tencent.wework",
+  "default_delay": 10,
+  "max_delay": 120,
+  "command_timeout": 20,
+  "data_dir": "./data",
+  "result_retention_hours": 24
+}

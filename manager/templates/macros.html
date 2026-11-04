@@ -1,0 +1,24 @@
+{% macro icon(name) -%}
+{% set paths = {
+'home':'<path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/>',
+'calendar':'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18"/>',
+'list':'<rect x="5" y="3" width="14" height="18" rx="3"/><path d="M9 8h6m-6 4h6m-6 4h4"/>',
+'settings':'<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="8" cy="18" r="2"/>',
+'clock':'<circle cx="12" cy="12" r="9"/><path d="M12 6v7l4 2"/>',
+'play':'<path d="m9 5 11 7-11 7z"/>','pause':'<path d="M8 5v14m8-14v14"/>',
+'camera':'<path d="M8 6 10 3h4l2 3h4v14H4V6z"/><circle cx="12" cy="12" r="4"/>',
+'phone':'<rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 5h4m-3 14h2"/>',
+'check':'<path d="m5 12 4 4L19 6"/>','chevron':'<path d="m9 5 7 7-7 7"/>','left':'<path d="m15 5-7 7 7 7"/>',
+'bell':'<path d="M5 16h14l-2-3V9a5 5 0 0 0-10 0v4zM10 20h4"/>',
+'logout':'<path d="M9 3H4v18h5m4-15 6 6-6 6m-5-6h11"/>',
+'download':'<path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4"/>',
+'sun':'<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2"/>',
+'moon':'<path d="M20 15.5A9 9 0 0 1 8.5 4 9 9 0 1 0 20 15.5Z"/>',
+'leaf':'<path d="M20 3c1 12-3 18-10 17-9-1-9-14 10-17Z"/><path d="M4 21 16 9"/>',
+'refresh':'<path d="M20 8a8 8 0 1 0 1 6m-1-11v5h-5"/>'} %}
+<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">{{ paths.get(name,paths.clock)|safe }}</svg>
+{%- endmacro %}
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
+{% macro operation(kind, label, symbol='play', css='') %}
+<form action="{{ url_for('run_create') }}" method="post">{{ csrf() }}<input type="hidden" name="request_id" value="{{ request_id() }}"><input type="hidden" name="kind" value="{{ kind }}"><button class="btn {{ css }}" type="submit">{{ icon(symbol) }}{{ label }}</button></form>
+{% endmacro %}

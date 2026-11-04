@@ -1,0 +1,10 @@
+services:
+  manager:
+    build: .
+    container_name: wechat-checkin
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - .:/app
+    stop_grace_period: 10s

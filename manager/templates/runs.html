@@ -1,0 +1,30 @@
+{% extends 'base.html' %}{% from 'macros.html' import icon with context %}
+{% block content %}
+<section class="card records-card" data-page="{{ page }}" data-per-page="{{ per_page }}">
+  <form class="filter-form" method="get">
+    <input type="hidden" name="per_page" value="{{ per_page }}">
+    <label>开始日期<input class="field" type="date" name="from" value="{{ start }}"></label>
+    <label>结束日期<input class="field" type="date" name="to" value="{{ end }}"></label>
+    <button class="btn soft" type="submit">查看</button>
+  </form>
+  <div class="records-items">
+    {% for run in runs %}
+    <div class="record-entry">
+      <p class="date-label">{{ run.day }}</p>
+      <a class="record-item" href="{{ url_for('run_detail',run_id=run.id) }}">
+        <span class="status-icon {{ 'amber' if run.status in ['failed','missed','unknown'] else '' }}">{{ icon('check' if run.status=='completed' else 'clock') }}</span>
+        <div class="record-info"><strong>{{ slots.get(run.slot,'连接测试' if run.kind=='test' else '获取截图' if run.kind=='screenshot' else '手动执行') }}{{ ' · 自动' if run.trigger=='automatic' else '' }}</strong><small>{{ run.reason[:44] if run.reason else '已保存截图' if run.screenshot else '查看任务详情' }}</small></div>
+        <div class="record-right"><span class="mono">{{ run.created_at|clock }}</span><br><span class="badge {{ 'green' if run.status=='completed' else 'amber' }}">{{ statuses[run.status] }}</span></div>
+        {{ icon('chevron') }}
+      </a>
+    </div>
+    {% else %}<p class="muted small empty">所选日期暂无记录</p>{% endfor %}
+  </div>
+  <nav class="pagination" aria-label="记录分页">
+    {% if page>1 %}<a class="btn small" href="{{ url_for('runs_page',page=page-1,per_page=per_page,**{'from':start,'to':end}) }}">上一页</a>{% else %}<span></span>{% endif %}
+    <span>第 {{ page }} / {{ pages }} 页</span>
+    {% if page<pages %}<a class="btn small" href="{{ url_for('runs_page',page=page+1,per_page=per_page,**{'from':start,'to':end}) }}">下一页</a>{% else %}<span></span>{% endif %}
+  </nav>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static',filename='records.js') }}" defer></script>{% endblock %}

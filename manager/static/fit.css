@@ -1,0 +1,485 @@
+/* 一屏布局：内容由弹性网格分配高度，长内容通过分页或标签切换。 */
+html,body{height:100%;overflow:hidden}
+body{font-size:13px}
+.shell{height:100dvh;min-height:0;max-width:1360px}
+.main{height:100%;max-width:none;padding:20px 27px 12px;display:flex;flex-direction:column;gap:12px;min-height:0}
+.topline{margin:0;min-height:24px;flex-shrink:0}
+.page-heading{margin:0;min-height:49px;flex-shrink:0}
+.page-heading h1{font-size:25px}
+.page-heading p{margin-top:2px;font-size:12px}
+.breadcrumb{margin:0;font-size:11px;line-height:18px;flex-shrink:0}
+.content-stage{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px}
+.content-stage>*{min-height:0}
+.footer{margin:0;font-size:10px;line-height:14px;flex-shrink:0}
+.card{padding:17px;box-shadow:none}
+.card-header{margin-bottom:11px}
+.card-header h2,h2{font-size:15px}
+h3{font-size:13px}
+.btn{min-height:36px;padding:7px 13px;font-size:12px}
+.btn.small{min-height:31px;font-size:11px}
+.badge{font-size:10px}
+.notice{margin:0;padding:7px 11px;font-size:11px;flex-shrink:0}
+.notice .icon{width:15px;height:15px}
+.content-stage>.narrow{height:100%;width:100%;max-width:720px;display:flex;flex-direction:column;gap:10px}
+.content-stage>.narrow>.card{flex:1;min-height:0}
+.form-label{margin-bottom:5px;font-size:12px}
+.form-group{margin-bottom:14px}
+.field{min-height:37px;padding:7px 10px;font-size:12px}
+.form-help{font-size:10px;margin-top:5px;line-height:1.5}
+.form-actions{margin-top:12px;gap:8px;flex-shrink:0}
+.form-actions.sticky-actions{margin-top:auto;padding-top:12px}
+.form-actions>.text-link:first-child{margin-right:auto}
+.field-divider{margin:12px 0}
+.step-list li{padding:7px 0;font-size:12px}
+.step-list li:before{width:23px;height:23px}
+.details-row{padding:9px 0;font-size:12px}
+.content-stage>.result-page{height:100%;width:100%;margin:0;max-width:none;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.result-page .result-mark{margin-bottom:13px}
+.result-page .form-actions{margin-top:18px}
+
+/* 概览 */
+.fit-dashboard{height:100%;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(270px,1fr);grid-template-rows:minmax(0,1.1fr) auto minmax(0,1fr);grid-template-areas:"next device" "actions device" "today recent";gap:13px}
+.home-next{grid-area:next;min-height:0;display:flex;flex-direction:column;justify-content:center;padding:22px 25px}
+.hero-clock{font-size:clamp(30px,4.5vh,48px);margin-top:12px}
+.hero-clock.paused{font-size:34px}
+.hero-date{font-size:12px;margin-top:5px}
+.hero-foot{font-size:10px;margin-top:12px}
+.hero-device-meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;position:relative;z-index:1}
+.hero-device-meta>.flex{gap:5px}
+.demo-flow-link{margin-top:15px;font-size:11px}
+.hero-symbol{top:35%;right:25px}
+.home-actions{grid-area:actions;margin:0;grid-template-columns:1fr 1fr 1fr}
+.home-actions>.btn:last-child{grid-column:auto}
+.home-actions .btn{min-height:36px;font-size:11px}
+.home-today{grid-area:today;display:flex;flex-direction:column;margin:0!important}
+.home-today .session-grid{flex:1;min-height:0}
+.session{padding:12px;min-height:0;display:flex;flex-direction:column;justify-content:center}
+.session-time{font-size:23px;margin-top:6px;line-height:1.3}
+.session-window{font-size:10px;margin-top:3px}
+.session .badge{margin-top:8px;align-self:flex-start}
+.home-device{grid-area:device;display:flex;flex-direction:column;gap:4px;justify-content:center}
+.home-device .device{padding-bottom:12px}
+.home-device .text-link{margin-top:8px}
+.home-recent{grid-area:recent;display:flex;flex-direction:column;gap:0}
+.recent-line{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.recent-line h3{font-size:12px}
+.recent-line p{font-size:10px;line-height:1.8}
+.recent-links{margin-left:auto;display:flex;gap:12px;align-items:center}
+.recent-picture{flex:1;min-height:0;margin-top:10px;border:1px solid var(--line);border-radius:10px;position:relative;overflow:hidden;background:#f0f5e9}
+.recent-picture img{width:100%;height:100%;object-fit:cover;object-position:top}
+.recent-picture span{position:absolute;bottom:0;left:0;right:0;background:#fffE;font-size:10px;text-align:center;padding:3px}
+
+/* 月历在剩余空间内分配每一周。 */
+.calendar-card{flex:1;display:flex;flex-direction:column;min-height:0}
+.calendar-top{margin-bottom:8px;flex-shrink:0}
+.month-title{font-size:18px}
+.legend{margin-bottom:5px;font-size:10px}
+.calendar{flex:1;min-height:0;grid-auto-rows:minmax(0,1fr);gap:5px}
+.weekday{grid-row:1;align-self:center;padding:0;font-size:10px}
+.calendar{grid-template-rows:17px repeat(var(--weeks,6),minmax(0,1fr))}
+.day{min-height:0;padding:5px 9px;justify-content:center}
+.day .day-number{font-size:12px;line-height:1.2}
+.day .day-status{font-size:10px;margin-top:4px;line-height:1.3}
+.day .day-count{font-size:9px;line-height:1.3}
+.calendar-notes{margin-top:9px;padding-top:8px;font-size:10px;flex-shrink:0;line-height:1.5}
+
+/* 每日编辑、批量调整 */
+.day-form{display:flex;flex-direction:column;justify-content:center}
+.day-form>.form-group{margin-bottom:11px}
+.day-form .mode-choice .mode-box{padding:12px 7px;min-height:83px}
+.day-form .mode-box .icon{width:19px;height:19px;margin-bottom:5px}
+.day-form .mode-explanation{padding:8px 10px;margin-top:9px;font-size:11px}
+.day-form .session{padding:11px}
+.day-form .session-time{font-size:21px}
+.day-form .session .badge{margin-top:6px}
+.day-form>h3{margin-bottom:9px!important;font-size:12px}
+.day-form>.form-actions{margin-top:auto}
+.day-form>.field-divider{margin:7px 0 12px}
+.leave-preview{min-height:75px;display:flex;align-items:center}
+.day-form:not(:has(#mode-leave:checked)) .leave-preview{display:none}
+.day-form .working-preview{min-height:0}
+
+/* 配置通过应用、设备、通知、账号页面切换。 */
+.fit-form{flex:1;display:flex;flex-direction:column;width:100%;min-height:0}
+.settings-form{max-width:840px;align-self:center}
+.settings-form .form-content{gap:0}
+.section-tabs{display:flex;gap:5px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:14px;flex-shrink:0}
+.section-tabs a{flex:1;text-align:center;padding:6px 12px;font-size:12px;border-radius:7px;color:var(--muted)}
+.section-tabs a[aria-current=page]{background:var(--soft);color:var(--green);font-weight:600}
+.form-content{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px 20px}
+.field-grid .form-group{margin:0;min-width:0;display:block}
+.field-grid .field{width:100%;min-width:0}
+.form-extra{margin-top:18px}
+.device-tip{display:flex;align-items:center;gap:10px;margin-top:18px;font-size:12px;background:#f5f8ef;padding:12px;border-radius:10px}
+.auto-form{max-width:900px;align-self:center}
+.auto-form .form-content{gap:16px}
+.auto-form .form-group{margin:0}
+.window-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.window-block{border:1px solid var(--line);border-radius:11px;padding:15px}
+.time-window{margin-top:11px}
+.time-window .field{font-size:12px;min-width:0}
+.auto-form .week-picker span{padding:7px 4px}
+
+/* 详情通过原生单选标签切换，不使用 JavaScript。 */
+.fit-detail{flex:1;min-height:0;display:flex;flex-direction:column;max-width:850px;width:100%;align-self:center}
+.detail-result{display:flex;align-items:center;gap:11px;margin-bottom:12px;flex-shrink:0}
+.radio-tabs{display:flex;gap:5px;padding-bottom:10px;border-bottom:1px solid var(--line);flex-shrink:0}
+.radio-tabs label{flex:1;text-align:center;padding:6px;cursor:pointer;color:var(--muted);font-size:12px;border-radius:7px}
+.radio-tabs input:checked+label{background:var(--soft);color:var(--green);font-weight:600}
+.radio-tabs input:focus-visible+label{outline:2px solid #7f9e68}
+.detail-panels{flex:1;min-height:0;position:relative;padding:8px 0}
+.detail-panel{display:none;height:100%;min-height:0}
+.fit-detail:has(#detail-summary:checked) .summary-panel{display:flex;flex-direction:column;justify-content:center}
+.fit-detail:has(#detail-steps:checked) .steps-panel{display:flex;align-items:center}
+.fit-detail:has(#detail-image:checked) .image-panel{display:flex;flex-direction:column;gap:6px}
+.fit-detail .step-list{width:100%}
+.image-panel .shot-canvas{flex:1}
+.image-panel .screenshot-caption{margin:0;font-size:10px}
+.fit-screenshot{flex:1;display:flex;flex-direction:column;min-height:0;gap:10px}
+.shot-canvas{flex:1;min-height:0;display:flex;justify-content:center;align-items:center;background:#f2f5ed;border-radius:12px;padding:8px;overflow:hidden}
+.shot-canvas img{width:100%;height:100%;object-fit:contain;min-height:0}
+.shot-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0}
+.shot-meta h3{font-size:12px}
+.shot-meta p{font-size:10px}
+.fit-screenshot .form-actions{margin:0}
+
+/* 记录只展示一页，底部切页；进度和结果卡片填充剩余高度。 */
+.records-card{flex:1;display:flex;flex-direction:column;min-height:0}
+.filter-form{margin-bottom:8px;gap:8px;flex-shrink:0}
+.filter-form label{min-width:0;font-size:10px;gap:4px}
+.filter-form .btn{height:37px}
+.records-items{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-start}
+.date-label{margin:9px 0 5px;font-size:10px}
+.record-item{margin-bottom:7px;padding:12px 14px;flex-shrink:0}
+.record-item strong{font-size:12px}
+.record-item small{font-size:10px}
+.pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding-top:10px;margin-top:8px;flex-shrink:0}
+.pagination>span{font-size:11px;color:var(--muted)}
+.page-running .narrow>.card{display:flex;flex-direction:column}
+.page-running .step-list{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center}
+.page-running .progress{margin:12px 0 6px}
+.page-running .form-actions{margin-top:auto}
+.page-running .narrow>.form-help{margin:0!important;font-size:10px}
+.install-card{max-width:720px;align-self:center;justify-content:center}
+.install-brand{margin-bottom:16px;gap:13px}
+.install-card .instruction-list{margin:0;padding-left:20px}
+.install-card .instruction-list li{font-size:12px;padding:10px 0}
+.install-card>.form-actions{margin-top:auto}
+.login-page{height:100dvh;min-height:0;padding:16px}
+.login-card{padding:25px}
+.login-brand{margin-bottom:20px}
+.login-brand img{width:43px;margin-bottom:13px}
+.login-brand h1{font-size:23px}
+.login-note{margin-top:16px}
+.login-session-note{font-size:11px;color:var(--muted);line-height:1.7}
+.password-rules{margin-top:14px;font-size:11px;color:var(--muted);line-height:1.8}
+.password-rules p{margin-top:3px}
+@media(max-height:580px){.password-rules{font-size:9px;margin-top:8px}.login-session-note{font-size:10px}}
+
+@media(min-width:821px){
+  .sidebar{padding-top:28px}
+  .content-stage>.notice{flex-shrink:0}
+  .page-install .instruction-list,.page-install-android .instruction-list{margin-top:8px}
+  .steps-panel .step-list{display:grid;grid-template-columns:1fr 1fr;gap:7px 25px;grid-auto-flow:row}
+}
+
+@media(max-width:820px){
+  .shell{max-width:720px;padding-left:0}
+  .main{padding:12px 14px calc(70px + env(safe-area-inset-bottom));gap:8px}
+  .topline{min-height:24px}
+  .page-heading{min-height:44px;gap:10px}
+  .page-heading h1{font-size:22px;line-height:1.3}
+  .page-heading p{font-size:10px;margin-top:3px}
+  .page-heading .page-actions{gap:5px;flex-wrap:nowrap}
+  .page-actions .btn{font-size:10px;min-height:32px;padding:6px 9px;gap:4px}
+  .page-actions .icon{width:13px;height:13px}
+  .mobile-brand img{width:23px;height:23px}
+  .demo-tag{font-size:9px;padding:2px 6px}
+  .navigation{padding-top:5px;padding-bottom:calc(5px + env(safe-area-inset-bottom))}
+  .navigation a{padding:4px 5px;gap:1px}
+  .navigation a .icon{width:20px;height:20px}
+  .footer{font-size:9px;line-height:12px}
+  .breadcrumb{font-size:10px;line-height:15px}
+  .card{padding:13px;border-radius:14px}
+  .card-header{margin-bottom:8px}
+  .card-header h2,h2{font-size:14px}
+  .main:has(.calendar-card) .page-heading{flex-direction:row;align-items:center}
+  .main:has(.calendar-card) .page-heading p{max-width:170px}
+  .fit-dashboard{grid-template-columns:1fr;grid-template-rows:minmax(110px,1.15fr) auto minmax(114px,1fr) minmax(72px,.65fr);grid-template-areas:"next" "actions" "today" "recent";gap:9px}
+  .home-next{padding:15px 20px;border-radius:17px}
+  .hero-clock{font-size:clamp(30px,4.9dvh,42px);margin-top:7px;line-height:1.15}
+  .hero-clock.paused{font-size:29px}
+  .hero-top .eyebrow{font-size:9px;letter-spacing:1px}
+  .hero .badge{font-size:9px;padding:3px 7px}
+  .hero-date{font-size:11px;margin-top:5px}
+  .hero-foot{font-size:9px;margin-top:8px}
+  .hero-symbol{top:34%;right:22px}
+  .hero-symbol .icon{width:46px;height:46px}
+  .home-actions{gap:7px}
+  .home-actions .btn{font-size:10px;min-height:34px;padding:6px 5px;gap:5px}
+  .home-device{display:none}
+  .home-today .session-grid{gap:9px}
+  .session{padding:9px 11px}
+  .session .session-name{font-size:11px}
+  .session-name .icon{width:14px;height:14px}
+  .session-time{font-size:21px;margin-top:4px}
+  .session-window{font-size:9px;white-space:nowrap}
+  .session .badge{font-size:9px;margin-top:5px}
+  .home-recent{justify-content:center}
+  .home-recent .card-header{margin-bottom:5px}
+  .recent-line{gap:8px}
+  .recent-line .status-icon{width:27px;height:27px;border-radius:9px}
+  .recent-links{gap:10px}
+  .recent-links .text-link{font-size:10px}
+  .recent-picture{display:none}
+  .calendar-card{padding:12px}
+  .calendar-top{margin-bottom:5px}
+  .month-title{font-size:16px}
+  .calendar-top .btn{min-height:28px;padding:4px 8px}
+  .calendar-top .icon-only{width:28px;padding:0}
+  .legend{margin:0 0 4px;gap:12px;font-size:9px}
+  .calendar{gap:4px}
+  .day{padding:3px 5px;border-radius:8px}
+  .day .day-number{font-size:11px}
+  .day .day-status{font-size:9px;margin-top:3px}
+  .day .day-count{font-size:8px;white-space:nowrap}
+  .calendar-notes{font-size:9px;margin-top:6px;padding-top:6px;display:block}
+  .calendar-notes span{display:block;line-height:1.5}
+  .field-grid{grid-template-columns:1fr;gap:12px}
+  .section-tabs{padding-bottom:8px;margin-bottom:10px}
+  .section-tabs a{padding:5px 10px;font-size:11px}
+  .form-content{justify-content:center}
+  .form-group{margin-bottom:10px}
+  .form-actions{margin-top:10px}
+  .form-actions.sticky-actions{padding-top:10px}
+  .form-actions .btn{font-size:11px;min-height:34px}
+  .field{font-size:12px;min-height:36px}
+  .form-extra{margin-top:13px}
+  .device-tip{font-size:11px;padding:10px;margin-top:15px}
+  .window-grid{grid-template-columns:1fr;gap:12px}
+  .window-block{padding:11px 12px}
+  .auto-form .form-content{gap:12px}
+  .auto-form .week-picker{gap:5px}
+  .auto-form .week-picker span{padding:6px 2px;font-size:10px}
+  .time-window{margin-top:9px;gap:9px}
+  .time-window .field{font-size:12px}
+  .day-form .form-help{font-size:9px}
+  .day-form .mode-choice .mode-box{padding:10px 5px;min-height:77px}
+  .mode-choice strong{font-size:12px}
+  .mode-choice small{font-size:9px}
+  .day-form .mode-explanation{font-size:10px;padding:7px 9px;margin-top:8px}
+  .day-form .session-time{font-size:20px}
+  .day-form .session{padding:8px 10px}
+  .day-form .form-group{margin-bottom:9px}
+  .day-form .form-actions{padding-top:10px}
+  .details-row{padding:8px 0;font-size:11px}
+  .detail-result{margin-bottom:9px;gap:9px}
+  .detail-result h3{font-size:13px}
+  .detail-result p{font-size:10px}
+  .radio-tabs{padding-bottom:8px}
+  .radio-tabs label{font-size:11px;padding:5px}
+  .step-list li{padding:6px 0;font-size:11px}
+  .step-list li:before{width:22px;height:22px}
+  .detail-panels{padding:5px 0}
+  .records-card .field{padding:6px 7px;font-size:11px;min-height:34px}
+  .filter-form .btn{font-size:11px;min-height:34px;height:34px;padding:6px 9px}
+  .filter-form label{font-size:9px;min-width:0}
+  .record-item{padding:10px 11px;margin-bottom:6px;gap:9px}
+  .record-item .status-icon{width:27px;height:27px}
+  .record-item strong{font-size:11px}
+  .record-item small{font-size:9px}
+  .record-item .record-right .mono{font-size:10px}
+  .date-label{margin:7px 0 4px;font-size:9px}
+  .progress-head .status-icon{width:35px;height:35px}
+  .progress-head h2{font-size:14px}
+  .progress-head p{font-size:10px}
+  .page-running .step-list li{padding:3px 0;line-height:1.4}
+  .page-running .field-divider{margin:8px 0}
+  .install-brand{gap:10px;margin-bottom:12px}
+  .install-brand h2{font-size:14px}
+  .install-brand p{font-size:10px}
+  .install-card .instruction-list li{font-size:11px;padding:10px 0}
+  .result-page{padding:22px 15px}
+}
+
+@media(max-height:700px){
+  .main{gap:7px}
+  .form-help{font-size:9px}
+  .calendar-notes span:first-child{display:none}
+  .day .day-count{display:none}
+  .day .day-status{margin-top:2px}
+  .form-content{gap:8px}
+  .field-grid{gap:10px 16px}
+  .form-label{margin-bottom:4px;font-size:11px}
+  .field{min-height:33px;padding:5px 9px}
+  .device-tip{margin-top:10px;padding:9px;font-size:11px}
+  .window-block{padding:9px 11px}
+  .auto-form .form-content{gap:10px}
+  .week-picker span{padding:5px 3px}
+  .time-window{margin-top:7px}
+  .day-form{justify-content:flex-start}
+  .day-form .mode-choice .mode-box{min-height:69px;padding:8px 4px}
+  .day-form .mode-box .icon{width:17px;height:17px;margin-bottom:4px}
+  .day-form .mode-choice small{font-size:8px}
+  .day-form>.form-group{margin-bottom:7px}
+  .day-form .mode-explanation{padding:6px 8px;margin-top:6px;font-size:10px}
+  .day-form>.field-divider{margin:3px 0 7px}
+  .day-form>h3{margin-bottom:6px!important}
+  .day-form .session{padding:7px 9px}
+  .day-form .session-time{font-size:18px}
+  .day-form .session-window{font-size:8px}
+  .day-form .session .badge{font-size:8px;margin-top:4px}
+  .record-item{padding:8px 10px}
+  .step-list li{padding:4px 0}
+  .details-row{padding:7px 0}
+}
+
+@media(max-height:580px){
+  .main{padding-top:9px;padding-bottom:9px;gap:6px}
+  .topline{min-height:20px}
+  .topline .mobile-brand img{width:20px;height:20px}
+  .page-heading{min-height:35px}
+  .page-heading h1{font-size:20px}
+  .page-heading p{font-size:9px}
+  .breadcrumb{line-height:12px}
+  .footer{font-size:8px;line-height:10px}
+  .card{padding:10px}
+  .section-tabs{margin-bottom:8px;padding-bottom:6px}
+  .form-actions.sticky-actions{padding-top:8px}
+  .field-grid{gap:9px}
+  .settings-form .field-grid{gap:6px}
+  .settings-form .form-extra{margin-top:8px}
+  .fit-detail .step-list li{padding:2px 0}
+  .field{min-height:31px}
+  .form-help{margin-top:3px;font-size:8px}
+  .form-actions .btn{min-height:31px;font-size:10px}
+  .mode-choice small{display:none}
+  .day-form .mode-choice .mode-box{min-height:58px;padding:7px 3px}
+  .day-form .mode-explanation{font-size:9px;padding:5px 7px}
+  .day-form>.form-group{margin-bottom:6px}
+  .day-form .form-label{font-size:10px;margin-bottom:3px}
+  .day-form .session .session-name{font-size:10px}
+  .day-form .session-time{font-size:17px}
+  .fit-dashboard{grid-template-rows:minmax(92px,1.15fr) auto minmax(102px,1fr) minmax(64px,.65fr);gap:7px}
+  .hero-clock{font-size:29px;margin-top:4px}
+  .home-next{padding:12px 16px}
+  .hero-foot{margin-top:5px;font-size:8px}
+  .hero-date{font-size:10px;margin-top:4px}
+  .hero-symbol{top:33%}
+  .hero-symbol .icon{width:35px;height:35px}
+  .home-today .card-header h2,.home-recent .card-header h2{font-size:12px}
+  .home-today .card-header,.home-recent .card-header{margin-bottom:4px}
+  .session-time{font-size:18px}
+  .session .session-name{font-size:10px}
+  .session .session-window{font-size:8px}
+  .session .badge{font-size:8px;margin-top:4px}
+  .recent-line h3{font-size:11px}
+  .recent-line p{font-size:9px}
+  .result-page .result-mark{width:42px;height:42px;margin-bottom:10px}
+  .result-page p{font-size:11px;margin-top:8px}
+  .login-card{padding:19px}
+  .login-brand img{width:34px;margin-bottom:8px}
+  .login-brand{margin-bottom:14px}
+}
+
+@media(max-width:820px) and (max-height:580px){.main{padding-bottom:65px}.home-actions .btn{min-height:31px}.calendar-top .month-title{font-size:14px}}
+
+@media(min-width:700px) and (max-height:500px){
+  .shell{padding-left:165px}
+  .sidebar{display:flex;position:fixed;width:150px;margin-left:-165px;padding:14px 10px;border-right:1px solid var(--line)}
+  .sidebar .brand{display:flex;padding:0 5px 15px}
+  .sidebar .brand img{width:28px;height:28px}
+  .sidebar .brand strong{font-size:14px}
+  .sidebar .brand small{font-size:8px}
+  .navigation{position:static;display:flex;flex-direction:column;background:transparent;padding:0;border:0;box-shadow:none;gap:5px}
+  .navigation a{flex-direction:row;justify-content:flex-start;padding:7px 10px;gap:9px;font-size:11px}
+  .navigation a[aria-current=page]{background:var(--soft)}
+  .side-bottom{display:none}
+  .main{padding:10px 15px;gap:5px}
+  .topline{display:none}
+  .page-heading{min-height:33px}
+  .page-heading p{display:none}
+  .breadcrumb{font-size:9px;line-height:12px}
+  .footer{font-size:8px;line-height:10px}
+  .fit-dashboard{grid-template-columns:1fr 1fr;grid-template-rows:minmax(0,1fr) auto minmax(0,1fr);grid-template-areas:"next device" "actions device" "today recent";gap:7px}
+  .home-device{display:flex;padding:10px}
+  .home-device .device{display:none}
+  .home-device .details-row{padding:4px 0;font-size:10px}
+  .home-device .text-link{font-size:10px;margin:0}
+  .home-device .card-header{margin-bottom:4px}
+  .hero-clock{font-size:25px;margin-top:2px}
+  .hero-date{font-size:9px;margin-top:2px}
+  .hero-foot{font-size:8px;margin-top:3px}
+  .home-next{padding:9px 13px}
+  .home-today .session{padding:5px 8px}
+  .home-today .session .badge{margin:2px 0 0;font-size:8px}
+  .home-today .session-time{font-size:16px;margin-top:2px}
+  .home-today .session-window{display:none}
+  .home-today .card-header{margin-bottom:3px}
+  .home-recent .card-header{display:none}
+  .home-recent{padding:8px}
+  .recent-line .status-icon{display:none}
+  .recent-line h3{font-size:10px}
+  .recent-line p{font-size:8px}
+  .recent-links{gap:6px}
+  .recent-links .text-link{font-size:9px}
+  .field-grid{grid-template-columns:1fr 1fr;gap:9px 15px}
+  .form-content{gap:0}
+  .field-grid .form-help{font-size:8px}
+  .section-tabs{margin-bottom:5px;padding-bottom:5px}
+  .section-tabs a{padding:3px;font-size:10px}
+  .form-extra{margin-top:8px}
+  .settings-form .form-actions{padding-top:5px}
+  .device-tip{margin-top:8px;padding:7px;font-size:10px}
+  .window-grid{grid-template-columns:1fr 1fr;gap:10px}
+  .auto-form .form-content{gap:7px}
+  .window-block{padding:7px}
+  .day-form{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr auto;gap:6px 15px}
+  .day-form>.form-group:first-child{grid-column:1;grid-row:1}
+  .day-form>.form-group:nth-child(2){grid-column:1;grid-row:2/4}
+  .day-form>.field-divider{display:none}
+  .day-form>h3{grid-column:2;grid-row:1;align-self:center;margin:0!important}
+  .day-form>.working-preview,.day-form>.leave-preview{grid-column:2;grid-row:2}
+  .day-form>.form-help{display:none}
+  .day-form>.form-actions{grid-column:2;grid-row:3;padding-top:5px;margin:0}
+  .day-form .mode-explanation{font-size:9px}
+  .day-form .session-grid{height:100%;gap:6px}
+  .day-form .session{padding:6px}
+  .day-form .session-time{font-size:16px}
+  .detail-result{margin-bottom:5px}
+  .detail-result .status-icon{width:26px;height:26px}
+  .detail-result p{display:none}
+  .radio-tabs{padding-bottom:5px}
+  .radio-tabs label{padding:3px;font-size:10px}
+  .summary-panel{display:grid!important;grid-template-columns:1fr 1fr;column-gap:18px;align-content:center}
+  .fit-detail:not(:has(#detail-summary:checked)) .summary-panel{display:none!important}
+  .steps-panel .step-list{display:grid;grid-template-columns:1fr 1fr;gap:1px 18px}
+  .step-list li{padding:3px 0;font-size:10px}
+  .detail-panels{padding:3px 0}
+  .fit-detail .form-actions{padding-top:5px}
+  .records-items{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;align-content:center}
+  .records-items>.date-label{display:none}
+  .record-item{margin:0;padding:7px}
+  .record-item .status-icon{display:none}
+  .record-item .record-right .mono{font-size:9px}
+  .record-item strong{font-size:10px}
+  .record-item small{font-size:8px}
+  .record-item .badge{font-size:8px}
+  .pagination{padding-top:6px;margin-top:5px}
+  .page-running .step-list{display:grid;grid-template-columns:1fr 1fr;gap:2px 15px;align-content:center}
+  .page-running .narrow>.form-help{display:none}
+  .page-running .field-divider{margin:4px 0}
+  .page-running .form-actions{padding-top:4px}
+  .install-brand{margin-bottom:8px}
+  .install-brand img{width:30px}
+  .install-card .instruction-list li{padding:4px;font-size:10px}
+  .install-card .form-actions{margin-top:6px}
+  .calendar{gap:3px}
+  .calendar-top{margin-bottom:3px}
+  .legend{margin-bottom:2px}
+  .day{padding:2px 7px}
+  .day .day-number{font-size:10px}
+  .day .day-status{font-size:8px;margin-top:0}
+  .calendar-notes{margin-top:3px;padding-top:3px;font-size:8px}
+}

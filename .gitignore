@@ -1,0 +1,10 @@
+data/
+logs/
+.env
+__pycache__/
+*.py[cod]
+.venv/
+*.log
+artifacts/
+controller/adb/
+controller/config.json
