@@ -26,7 +26,12 @@
 @media(max-width:820px){
   .records-card .record-item{padding:8px 11px;margin-bottom:3px}
   .records-card .date-label{margin-bottom:3px}
-  .records-card .filter-form .field,.records-card .filter-form .btn{height:32px;min-height:32px;padding-top:5px;padding-bottom:5px}
+  .records-card .filter-form{-webkit-text-size-adjust:100%;text-size-adjust:100%;align-items:end}
+  .records-card .filter-form label{overflow:hidden}
+  .records-card .filter-form .field,.records-card .filter-form .btn{box-sizing:border-box;height:34px;min-height:34px;max-height:34px;margin:0;padding-top:6px;padding-bottom:6px;font-family:inherit;font-size:12px;line-height:20px}
+  .records-card .filter-form input[type=date]{display:block;-webkit-appearance:none;appearance:none;text-align:left}
+  .records-card .filter-form input[type=date]::-webkit-date-and-time-value{min-height:20px;text-align:left}
+  .records-card .filter-form input[type=date]::-webkit-datetime-edit{min-width:0;padding:0}
 }
 @media(max-width:360px){.records-card .filter-form .btn{grid-column:1/-1}.records-card .filter-form{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
 @media(min-width:700px) and (max-height:500px){.record-entry .date-label{display:none}}
