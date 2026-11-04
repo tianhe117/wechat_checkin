@@ -106,12 +106,12 @@ class ManagerTests(unittest.TestCase):
         self.assertNotIn("base64", run["remote_result"]["screenshot"])
         self.assertNotIn("api_key", self.store.dispatch(run_id))
         notices = []
-        self.service.sender = lambda settings, title, body, link, image="": (notices.append((title, body, link, image)) or ("sent", ""))
+        self.service.sender = lambda settings, title, body, image="": (notices.append((title, body, image)) or ("sent", ""))
         self.service.send_notice("run", run_id)
         self.service.send_notice("run", run_id)  # Explicit resend does not repeat phone execution.
         self.assertEqual(self.store.run(run_id)["bark_status"], "sent")
         self.assertEqual(len(notices), 2)
-        self.assertEqual(notices[0][3], "")  # A public URL is required to attach a screenshot.
+        self.assertEqual(notices[0][2], "")  # A public URL is required to attach a screenshot.
         self.assertEqual(self.adb.captures, 1)
 
     def test_bark_image_payload_signed_access_expiry_and_resend(self):
@@ -127,7 +127,7 @@ class ManagerTests(unittest.TestCase):
             request = send.call_args.args[0]
             payload = json.loads(request.data)
             self.assertEqual(request.full_url, "https://api.day.app/push")
-            self.assertEqual(payload["url"], "https://checkin.example/runs/" + run_id)
+            self.assertNotIn("url", payload)
             self.assertEqual(payload["device_key"], "test-bark-key")
             self.assertEqual(self.store.run(run_id)["bark_status"], "sent")
             image = urlsplit(payload["image"])
@@ -182,12 +182,13 @@ class ManagerTests(unittest.TestCase):
             payload = json.loads(send.call_args.args[0].data)
             self.assertNotIn("image", payload)
             self.assertIn("本次未采集到截图。", payload["body"])
-            self.assertIn("url", payload)
+            self.assertNotIn("url", payload)
 
             notice_id = self.service.create_notice("连接测试", "文字通知")
             self.service.send_notice("event", notice_id)
             payload = json.loads(send.call_args.args[0].data)
             self.assertNotIn("image", payload)
+            self.assertNotIn("url", payload)
             self.assertEqual(payload["body"], "文字通知")
             self.assertEqual(self.store.get("_notices")[0]["status"], "sent")
 

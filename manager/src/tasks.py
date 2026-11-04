@@ -320,12 +320,10 @@ class Service:
             self.enqueue_notice(run_id)
 
     @staticmethod
-    def _send_bark(settings, title, body, link, image=""):
+    def _send_bark(settings, title, body, image=""):
         if not settings["bark_key"]:
             return "not_configured", "未配置 Bark 密钥"
         payload = {"device_key": settings["bark_key"], "title": title, "body": body, "group": "打卡助手"}
-        if link:
-            payload["url"] = link
         if image:
             payload["image"] = image
         request = urllib.request.Request(settings["bark_server"].rstrip("/")+"/push", data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"}, method="POST")
@@ -365,19 +363,18 @@ class Service:
             body = f"{run['created_at'][:19]}\n{run['reason'] or '手机操作完成，请查看本次截图。'}"
             if not run["screenshot"]:
                 body += "\n本次未采集到截图。"
-            link = settings["public_url"].rstrip("/")+"/runs/"+identifier if settings["public_url"] else ""
             image = ""
             if run["screenshot"] and settings["public_url"]:
                 token = screenshot_signer(self.store.get("_secret")).dumps(identifier)
                 image = settings["public_url"].rstrip("/")+"/bark/screenshots/"+token+".png"
             self.store.change_run(identifier, bark_status="sending", bark_error="")
-            status, error = self.sender(settings, title, body, link, image)
+            status, error = self.sender(settings, title, body, image)
             self.store.change_run(identifier, bark_status=status, bark_error=error)
         else:
             entry = next((n for n in self.store.get("_notices", []) if n["id"] == identifier), None)
             if not entry:
                 return
-            status, error = self.sender(settings, entry["title"], entry["body"], settings["public_url"])
+            status, error = self.sender(settings, entry["title"], entry["body"])
             with self.store.connect(write=True) as db:
                 notices = self.store.get("_notices", [], db)
                 for item in notices:
