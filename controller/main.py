@@ -513,6 +513,8 @@ class Controller:
                 else:
                     perform("screen_wait", lambda: self.sleeper(0.5))
                 perform("screenshot", capture)
+                if operation == "screenshot":
+                    perform("lock_after", lambda: adb("shell", "input", "keyevent", "KEYCODE_SLEEP"), is_cleanup=True)
             except APIError as failure:
                 error, http_status = failure, failure.status
             finally:
