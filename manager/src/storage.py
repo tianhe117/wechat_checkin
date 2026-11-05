@@ -16,7 +16,7 @@ DEFAULTS = {
     "morning": {"enabled": True, "start": "08:30", "end": "09:00"},
     "evening": {"enabled": True, "start": "17:30", "end": "18:30"},
     "paused": False, "package": "", "wait_seconds": 10,
-    "controller_url": "", "controller_api_key": "", "serial": "", "bark_server": "https://api.day.app",
+    "controller_url": "", "controller_api_key": "", "serial": "", "phone_pin": "", "bark_server": "https://api.day.app",
     "bark_key": "", "public_url": "",
 }
 

@@ -69,6 +69,7 @@ def create_app(directory=None, *, store=None, service=None, secure_cookie=True):
         settings["bark_configured"] = bool(settings.pop("bark_key"))
         settings["controller_configured"] = controller_configured(settings)
         settings["controller_key_configured"] = bool(settings.pop("controller_api_key"))
+        settings["phone_pin_configured"] = bool(settings.pop("phone_pin"))
         return dict(settings=settings, csrf_token=csrf_token, request_id=lambda: secrets.token_urlsafe(18),
                     current_time=service.clock(), statuses=STATUS, bark_statuses=BARK_STATUS, slots=SLOTS, modes=MODES,
                     active="home", device=store.get("_device_state", {}), authenticated=logged_in())
@@ -196,6 +197,13 @@ def create_app(directory=None, *, store=None, service=None, secure_cookie=True):
                     key = request.form.get("controller_api_key", "").strip()
                     if key:
                         values["controller_api_key"] = key
+                    pin = request.form.get("phone_pin", "")
+                    if request.form.get("clear_phone_pin") == "1":
+                        values["phone_pin"] = ""
+                    elif pin:
+                        if not re.fullmatch(r"[0-9]{4,16}", pin):
+                            raise ValueError("手机锁屏 PIN 须为 4～16 位数字")
+                        values["phone_pin"] = pin
                     if values["controller_url"]:
                         client = ControllerClient(values["controller_url"], key or store.settings()["controller_api_key"])
                         values["controller_url"] = client.controller_url

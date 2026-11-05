@@ -37,6 +37,10 @@
 
 独立截图执行“亮屏 → 解锁 → 等待 0.5 秒 → 截图”，保持当前界面及亮屏状态。设备测试执行“亮屏 → 解锁 → 返回桌面 → 等待 0.5 秒 → 截图”。这两种操作不启动或关闭目标应用，也不执行完整应用流程的收尾。
 
+三个操作接口均接受可选 JSON 字段 `pin`，须为 4～16 位 ASCII 数字字符串，保留前导零。省略时使用上述无 PIN 流程。提供时，在 `dismiss-keyguard` 后等待 0.5 秒，读取 `dumpsys window policy` 的锁屏状态。已解锁则跳过输入，确认安全锁屏正在显示且未被遮挡时执行一次 `shell input text <pin>`，随后最多等待约 3 秒确认解除锁屏。此流程按已验证的数字输入后自动解锁行为实现。状态无法确认或解锁失败时终止主流程，完整应用操作仍执行收尾。
+
+PIN 通过 POST JSON 请求体传入，仅保留在本次执行的内存中，不写入配置、请求账本、响应或日志。PIN 输入命令的错误详情使用固定文本，避免回显凭据。相同 `request_id` 继续返回原结果，PIN 不参与去重参数比较，修改 PIN 后重新执行须使用新的 `request_id`。重新启动控制端后沿用现有的中断恢复规则，不自动重放 PIN。
+
 完整应用流程在手机操作开始后发生错误时，仍分别尝试三项收尾，一项失败不阻止后续收尾。主错误、收尾错误和已有截图分别保留；截图成功但收尾失败时，整体仍为失败。受理前校验失败不操作手机。
 
 ## 3. API 契约
@@ -55,9 +59,9 @@
 | --- | --- | --- |
 | `GET /health` | 无 | 版本、启动时间、运行秒数、是否忙及当前请求编号 |
 | `GET /devices` | 无 | `devices` 数组，包含 `serial`、`state`、`usable`、`brand`、`model` |
-| `POST /app/run` | `request_id`；可选 `serial`、`package`、`delay` | 完整应用流程结果 |
-| `POST /screenshot` | `request_id`；可选 `serial` | 当前界面截图结果 |
-| `POST /device/test` | `request_id`；可选 `serial` | 桌面截图及测试结果 |
+| `POST /app/run` | `request_id`；可选 `serial`、`package`、`delay`、`pin` | 完整应用流程结果 |
+| `POST /screenshot` | `request_id`；可选 `serial`、`pin` | 当前界面截图结果 |
+| `POST /device/test` | `request_id`；可选 `serial`、`pin` | 桌面截图及测试结果 |
 | `GET /requests/{request_id}` | 路径中的请求编号 | 已有状态或结果，只查询，不触发手机操作 |
 
 表中路径均相对于 `/api/v1`。`delay` 为 `0～max_delay` 的整数秒数。无设备时设备接口返回 `200` 和空数组；ADB 无法运行或查询超时则返回错误。品牌和型号读取失败时可为 `null`，仅 ADB `device` 状态标记为可用。

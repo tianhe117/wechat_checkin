@@ -205,7 +205,7 @@ class ControllerClient:
         self._validate_request_id(request_id)
         return self._request("GET", "requests/" + request_id, request_id=request_id)
 
-    def run_app(self, request_id, *, delay, package="", serial=""):
+    def run_app(self, request_id, *, delay, package="", serial="", pin=""):
         if not isinstance(package, str) or len(package) > 255 or package and not PACKAGE.fullmatch(package):
             raise ValueError("请填写有效的应用包名")
         if type(delay) is not int or delay < 0:
@@ -213,24 +213,26 @@ class ControllerClient:
         params = {"delay": delay}
         if package:
             params["package"] = package
-        return self._operate("app/run", request_id, serial, **params)
+        return self._operate("app/run", request_id, serial, pin, **params)
 
-    def screenshot(self, request_id, *, serial=""):
-        return self._operate("screenshot", request_id, serial)
+    def screenshot(self, request_id, *, serial="", pin=""):
+        return self._operate("screenshot", request_id, serial, pin)
 
-    def test_device(self, request_id, *, serial=""):
-        return self._operate("device/test", request_id, serial)
+    def test_device(self, request_id, *, serial="", pin=""):
+        return self._operate("device/test", request_id, serial, pin)
 
     @staticmethod
     def _validate_request_id(request_id):
         if not isinstance(request_id, str) or not REQUEST_ID.fullmatch(request_id):
             raise ValueError("request_id 须为 1～64 位字母、数字、短横线或下划线")
 
-    def _operate(self, operation, request_id, serial, **params):
+    def _operate(self, operation, request_id, serial, pin, **params):
         self._validate_request_id(request_id)
         if not isinstance(serial, str) or serial and not SERIAL.fullmatch(serial):
             raise ValueError("设备序列号格式不正确")
         body = {"request_id": request_id, **params}
+        if pin:
+            body["pin"] = pin
         if serial:
             body["serial"] = serial
         return self._request("POST", operation, request_id=request_id, body=body,

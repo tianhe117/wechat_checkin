@@ -371,7 +371,7 @@ class Controller:
     def validate_body(self, operation, body):
         if not isinstance(body, dict):
             raise invalid("请求体须为 JSON 对象")
-        allowed = {"request_id", "serial"} | ({"package", "delay"} if operation == "app/run" else set())
+        allowed = {"request_id", "serial", "pin"} | ({"package", "delay"} if operation == "app/run" else set())
         if set(body) - allowed:
             raise invalid("请求包含不支持的字段")
         request_id = body.get("request_id")
@@ -379,6 +379,8 @@ class Controller:
             raise invalid("request_id 须为 1～64 位字母、数字、短横线或下划线")
         if "serial" in body:
             validate_serial(body["serial"])
+        if "pin" in body and (not isinstance(body["pin"], str) or not re.fullmatch(r"[0-9]{4,16}", body["pin"])):
+            raise invalid("pin 须为 4～16 位数字字符串")
         if "package" in body:
             validate_package(body["package"])
         if "delay" in body and (type(body["delay"]) is not int or body["delay"] < 0):
@@ -387,6 +389,8 @@ class Controller:
 
     def submit(self, operation, body):
         request_id = self.validate_body(operation, body)
+        body = body.copy()
+        pin = body.pop("pin", None)  # Credential for this attempt only; never include it in the request ledger.
         with self.guard:
             previous = self.store.get(request_id)
             if previous:
@@ -407,7 +411,7 @@ class Controller:
                     self.adb.check_package(params["serial"], params["package"])
                 self.store.accept(request_id, operation, params)
                 completed = threading.Event()
-                self.thread = threading.Thread(target=self._execute, args=(request_id, operation, params, completed),
+                self.thread = threading.Thread(target=self._execute, args=(request_id, operation, params, completed, pin),
                                                name=f"phone-{request_id}", daemon=False)
                 try:
                     self.thread.start()
@@ -423,7 +427,7 @@ class Controller:
         completed.wait()
         return self.store.render(request_id)
 
-    def _execute(self, request_id, operation, params, completed):
+    def _execute(self, request_id, operation, params, completed, pin=None):
         serial = params["serial"]
         screenshot, screenshot_file = None, None
         error, cleanup_errors, steps = None, [], []
@@ -455,6 +459,34 @@ class Controller:
         def adb(*args):
             return self.adb.command(*args, serial=serial)
 
+        def locked():
+            policy = adb("shell", "dumpsys", "window", "policy")
+            block = re.search(r"(?m)^\s*KeyguardServiceDelegate[^\n]*\n((?:[ \t]+\w+=[^\n]*\n?)+)", policy)
+            fields = dict(re.findall(r"(?m)^\s*(\w+)=(true|false)\s*$", block[1])) if block else {}
+            if fields.get("showing") == "false":
+                return False
+            if all(fields.get(k) == v for k, v in (("showing", "true"), ("secure", "true"), ("occluded", "false"))):
+                return True
+            raise APIError(502, "LOCK_STATE_UNKNOWN", "无法确认安全锁屏状态")
+
+        def unlock():
+            adb("shell", "wm", "dismiss-keyguard")
+            if pin is None:
+                return
+            self.sleeper(0.5)
+            if not locked():
+                return
+            try:
+                adb("shell", "input", "text", pin)
+            except APIError as failure:
+                # ADB error output can include its arguments.
+                raise APIError(failure.status, failure.code, "发送锁屏 PIN 失败") from None
+            for _ in range(6):
+                self.sleeper(0.5)
+                if not locked():
+                    return
+            raise APIError(422, "UNLOCK_FAILED", "输入 PIN 后锁屏仍未解除")
+
         def capture():
             nonlocal screenshot, screenshot_file
             data = self.adb.screenshot(serial)
@@ -469,7 +501,7 @@ class Controller:
         try:
             try:
                 perform("wake", lambda: adb("shell", "input", "keyevent", "KEYCODE_WAKEUP"))
-                perform("unlock", lambda: adb("shell", "wm", "dismiss-keyguard"))
+                perform("unlock", unlock)
                 if operation != "screenshot":
                     perform("home_before", lambda: adb("shell", "input", "keyevent", "KEYCODE_HOME"))
                 if operation == "app/run":

@@ -241,10 +241,18 @@ class Service:
                     if polling:
                         result = client.get_request(run["request_id"])
                     else:
+                        params = dispatch["params"].copy()
+                        settings = self.store.settings()
+                        if settings["phone_pin"]:
+                            if (dispatch["url"] != settings["controller_url"] or
+                                    params["serial"] != settings["serial"]):
+                                self._finish(run_id, status="failed", reason="设备配置已变更，请重新发起任务")
+                                return
+                            params["pin"] = settings["phone_pin"]
                         # Commit before POST; a restart from this point always queries first.
                         dispatch["sent"] = True
                         self.store.change_run(run_id, dispatch=dispatch)
-                        result = getattr(client, METHODS[run["kind"]])(run["request_id"], **dispatch["params"])
+                        result = getattr(client, METHODS[run["kind"]])(run["request_id"], **params)
                 except ControllerError:
                     polling = True
                     self.store.change_run(run_id, reason="控制端暂不可达，正在按原请求编号查询结果")
