@@ -60,3 +60,4 @@
 .confirmation-actions .btn:disabled{opacity:.45;cursor:default}
 .confirmation-fallback form{margin-top:14px}
 @media(max-width:520px){.run-confirmation{margin:auto auto calc(14px + env(safe-area-inset-bottom));padding:20px}}
+.device-actions{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px}
