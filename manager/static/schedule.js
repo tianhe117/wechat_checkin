@@ -1,5 +1,32 @@
 /* Form behavior only; scheduling and validation remain on the server. */
 (() => {
+  const settingsForm = document.querySelector('.auto-form');
+  if (settingsForm) {
+    const select = (kind, value) => {
+      settingsForm.querySelectorAll(`[data-${kind}-tab]`).forEach(button => {
+        button.setAttribute('aria-pressed', String(button.getAttribute(`data-${kind}-tab`) === value));
+      });
+      settingsForm.querySelectorAll(`[data-${kind}-panel]`).forEach(panel => {
+        panel.hidden = panel.getAttribute(`data-${kind}-panel`) !== value;
+      });
+    };
+    ['schedule', 'weekday'].forEach(kind => {
+      settingsForm.querySelectorAll(`[data-${kind}-tab]`).forEach(button => {
+        button.addEventListener('click', () => select(kind, button.getAttribute(`data-${kind}-tab`)));
+      });
+    });
+    // Reveal the first invalid field before native validation tries to focus it.
+    settingsForm.noValidate = true;
+    settingsForm.addEventListener('submit', event => {
+      const invalid = Array.from(settingsForm.elements).find(input => input.willValidate && !input.validity.valid);
+      if (!invalid) return;
+      event.preventDefault();
+      const weekday = invalid.closest('[data-weekday-panel]');
+      select('schedule', weekday ? 'weekday' : 'default');
+      if (weekday) select('weekday', weekday.dataset.weekdayPanel);
+      invalid.reportValidity();
+    });
+  }
   document.querySelectorAll('.weekday-window').forEach(block => {
     const toggle = block.querySelector('[data-weekday-custom]');
     const update = () => {

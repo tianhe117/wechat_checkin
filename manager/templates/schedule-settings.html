@@ -1,12 +1,17 @@
 {% set config = schedule_settings if schedule_settings is defined else settings %}
-<section><h3>默认配置</h3>
+<nav class="section-tabs schedule-tabs" aria-label="计划配置分类">
+<button type="button" data-schedule-tab="default" aria-pressed="true" aria-controls="schedule-default">默认配置</button>
+<button type="button" data-schedule-tab="weekday" aria-pressed="false" aria-controls="schedule-weekday">星期配置</button>
+</nav>
+<section id="schedule-default" data-schedule-panel="default">
 <div class="form-group"><span class="form-label">每周工作日</span><div class="week-picker">{% for label in ['周一','周二','周三','周四','周五','周六','周日'] %}<label><input type="checkbox" name="weekdays" value="{{ loop.index }}" {{ 'checked' if loop.index in config.weekdays else '' }}><span>{{ label }}</span></label>{% endfor %}</div></div>
 <div class="window-grid">{% for slot,label in slots.items() %}<section class="window-block"><label class="switch-label"><strong>{{ label }}</strong><span class="flex small muted">启用<input type="checkbox" name="{{ slot }}_enabled" value="1" {{ 'checked' if config[slot].enabled else '' }}></span></label><div class="time-window"><input class="field" type="time" name="{{ slot }}_start" value="{{ config[slot].start }}" aria-label="默认{{ label }}开始" required><span>至</span><input class="field" type="time" name="{{ slot }}_end" value="{{ config[slot].end }}" aria-label="默认{{ label }}结束" required></div></section>{% endfor %}</div>
 <p class="form-help">在启用场次的窗口内随机执行一次，非工作日默认不打卡。</p></section>
-<section class="weekday-settings"><h3>按星期设置</h3><p class="form-help">仅覆盖时间窗口；工作日和场次开关沿用默认配置。已保存的单日打卡配置不受影响。</p>
+<section id="schedule-weekday" class="weekday-settings" data-schedule-panel="weekday" hidden>
+<nav class="weekday-tabs" aria-label="选择星期">{% for label in ['周一','周二','周三','周四','周五'] %}<button type="button" data-weekday-tab="{{ loop.index }}" aria-pressed="{{ 'true' if loop.first else 'false' }}" aria-controls="schedule-weekday-{{ loop.index }}">{{ label }}</button>{% endfor %}</nav><p class="form-help">仅覆盖时间窗口；工作日和场次开关沿用默认配置。已保存的单日打卡配置不受影响。</p>
 {% for label in ['周一','周二','周三','周四','周五'] %}{% set weekday = loop.index|string %}{% set custom = config.weekday_overrides.get(weekday,{}) %}
-<details {{ 'open' if custom else '' }}><summary>{{ label }} <small class="muted">{{ '有自定义窗口' if custom else '使用默认窗口' }}</small></summary><div class="window-grid">
+<div id="schedule-weekday-{{ weekday }}" data-weekday-panel="{{ weekday }}" {{ 'hidden' if not loop.first else '' }}><div class="window-grid">
 {% for slot,name in slots.items() %}{% set window = custom.get(slot,config[slot]) %}{% set prefix = 'weekday_' ~ weekday ~ '_' ~ slot %}
 <section class="window-block weekday-window" data-slot="{{ slot }}"><label class="switch-label"><strong>{{ name }}</strong><span class="flex small muted">自定义<input type="checkbox" data-weekday-custom name="{{ prefix }}_custom" value="1" {{ 'checked' if slot in custom else '' }}></span></label>
 <div class="time-window"><input class="field" type="time" data-bound="start" name="{{ prefix }}_start" value="{{ window.start }}" aria-label="{{ label }}{{ name }}开始"><span>至</span><input class="field" type="time" data-bound="end" name="{{ prefix }}_end" value="{{ window.end }}" aria-label="{{ label }}{{ name }}结束"></div><small class="form-help">未勾选时使用默认窗口</small></section>
-{% endfor %}</div></details>{% endfor %}</section>
+{% endfor %}</div></div>{% endfor %}</section>

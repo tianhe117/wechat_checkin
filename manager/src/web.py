@@ -267,7 +267,7 @@ def create_app(directory=None, *, store=None, service=None, secure_cookie=True):
             else:
                 flash("密码已修改，当前设备继续登录" if tab == "account" else "设置已保存")
             return redirect(url_for("settings_page", tab=tab, check="1" if tab == "device" else None), code=303)
-        return render_template("settings.html", title="自动计划设置" if tab == "schedule" else "设置", subtitle="应用、设备、通知与账号", tab=tab,
+        return render_template("settings.html", title="自动计划设置" if tab == "schedule" else "设置", subtitle="默认配置与星期配置" if tab == "schedule" else "应用、设备、通知与账号", tab=tab,
                                active="calendar" if tab == "schedule" else "settings", back=url_for("plans_page") if tab == "schedule" else None,
                                refresh=2 if tab == "device" and request.args.get("check") == "1" and not store.get("_device_state", {}) else None)
 
