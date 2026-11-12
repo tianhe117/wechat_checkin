@@ -1,7 +1,7 @@
 """A small scheduler, one HTTP phone worker, monitoring and Bark notifications."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 import itertools
 import json
 import logging
@@ -14,7 +14,7 @@ import urllib.request
 
 from .bark import screenshot_signer
 from .controller_client import ControllerClient, ControllerError, ControllerImageError
-from .planner import Planner, SLOTS, controller_configured, workday
+from .planner import Planner, SLOTS, controller_configured, effective_schedule, load_overrides
 from .storage import now, stamp
 
 KINDS = {"full": "手动执行", "test": "手机连接测试", "screenshot": "获取当前截图"}
@@ -31,12 +31,12 @@ class Service:
     def __init__(self, store, *, client_factory=ControllerClient, clock=now, sender=None):
         self.store, self.clock = store, clock
         self.client_factory = client_factory
-        self.planner = Planner(store, clock)
+        self.lock = threading.RLock()
+        self.planner = Planner(store, clock, lock=self.lock)
         self.sender = sender or self._send_bark
         self.phone_queue = queue.PriorityQueue()
         self.notice_queue = queue.Queue()
         self.sequence = itertools.count()
-        self.lock = threading.RLock()
         self.phone_busy = False
         self.queued_notices = set()
         self.stop_event = threading.Event()
@@ -104,14 +104,14 @@ class Service:
             self.last_day = at.date()
         with self.lock, self.store.connect(write=True) as db:
             settings = self.store.settings(db)
-            overrides = dict(db.execute("SELECT day,mode FROM day_overrides").fetchall())
+            overrides = load_overrides(db)
             for row in db.execute("SELECT * FROM plans WHERE status='pending' AND scheduled_at<=? ORDER BY scheduled_at", (stamp(at),)).fetchall():
                 plan = dict(row)
                 age = (at - datetime.fromisoformat(plan["scheduled_at"])).total_seconds()
                 reason = ""
                 if settings["paused"]:
                     reason = "计划时刻自动任务已暂停"
-                elif not workday(settings, overrides, datetime.fromisoformat(plan["scheduled_at"]).date()) or not settings[plan["slot"]]["enabled"]:
+                elif not effective_schedule(settings, overrides, date.fromisoformat(plan["day"]))[plan["slot"]]["enabled"]:
                     reason = "当前日期或场次设置跳过"
                 elif not controller_configured(settings):
                     reason = "控制端未配置"
@@ -222,9 +222,11 @@ class Service:
                 with self.store.connect() as db:
                     plan = dict(db.execute("SELECT * FROM plans WHERE id=?", (run["plan_id"],)).fetchone())
                     settings = self.store.settings(db)
-                    overrides = dict(db.execute("SELECT day,mode FROM day_overrides").fetchall())
-                    valid = (plan["status"] in {"queued", "running"} and not settings["paused"] and settings[plan["slot"]]["enabled"]
-                             and workday(settings, overrides, datetime.fromisoformat(plan["scheduled_at"]).date())
+                    overrides = load_overrides(db)
+                    if plan["status"] == "cancelled":
+                        return
+                    valid = (plan["status"] in {"queued", "running"} and not settings["paused"]
+                             and effective_schedule(settings, overrides, date.fromisoformat(plan["day"]))[plan["slot"]]["enabled"]
                              and (self.clock() - datetime.fromisoformat(plan["scheduled_at"])).total_seconds() <= 5
                              and not db.execute("SELECT 1 FROM runs WHERE trigger='manual' AND status='queued' LIMIT 1").fetchone())
                 if not valid:

@@ -12,6 +12,7 @@ from werkzeug.security import generate_password_hash
 
 TZ = timezone(timedelta(hours=8))
 DEFAULTS = {
+    "weekday_overrides": {},
     "weekdays": [1, 2, 3, 4, 5],
     "morning": {"enabled": True, "start": "08:30", "end": "09:00"},
     "evening": {"enabled": True, "start": "17:30", "end": "18:30"},
@@ -66,6 +67,13 @@ class Store:
             db.execute("DELETE FROM settings WHERE key IN ('adb_path','activity')")
             for key, value in DEFAULTS.items():
                 db.execute("INSERT OR IGNORE INTO settings VALUES (?,?)", (key, json.dumps(value)))
+            columns = {row[1] for row in db.execute("PRAGMA table_info(day_overrides)")}
+            if "schedule" not in columns:
+                db.execute("ALTER TABLE day_overrides ADD COLUMN schedule TEXT NOT NULL DEFAULT '{}'")
+            baseline = {slot: self.get(slot, DEFAULTS[slot], db) for slot in ("morning", "evening")}
+            db.execute("UPDATE day_overrides SET schedule=? WHERE mode='work' AND schedule='{}'",
+                       (json.dumps(baseline),))
+            db.execute("DELETE FROM day_overrides WHERE mode='default'")
             for key, value in {"_secret": secrets.token_hex(32), "_auth_version": secrets.token_hex(16)}.items():
                 db.execute("INSERT OR IGNORE INTO settings VALUES (?,?)", (key, json.dumps(value)))
             if not db.execute("SELECT 1 FROM settings WHERE key='_password' ").fetchone():

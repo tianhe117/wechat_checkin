@@ -14,7 +14,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from . import PROJECT_ROOT
 from .bark import IMAGE_MAX_AGE, screenshot_signer
 from .controller_client import ControllerClient
-from .planner import MODES, SLOTS, controller_configured, workday
+from .planner import MODES, SLOTS, controller_configured, effective_schedule, load_overrides
 from .storage import Store, TZ
 from .tasks import KINDS, Service
 
@@ -125,7 +125,7 @@ def create_app(directory=None, *, store=None, service=None, secure_cookie=True):
             latest = db.execute("SELECT * FROM runs ORDER BY created_at DESC LIMIT 1").fetchone()
         return render_template("overview.html", title="概览", subtitle=today.strftime("%m 月 %d 日")+" · 今天的安排",
                                today=today, plans=plans, next_plan=service.planner.next_plan(), mode=overrides.get(today.isoformat(), "default"),
-                               latest=store.decode_run(latest) if latest else None, refresh=15)
+                               schedule=service.planner.schedule(today), latest=store.decode_run(latest) if latest else None, refresh=15)
 
     @app.post("/pause")
     def pause():
@@ -144,23 +144,38 @@ def create_app(directory=None, *, store=None, service=None, secure_cookie=True):
             abort(400, description="月份不正确")
         weeks = calendar.Calendar().monthdatescalendar(first.year, first.month)
         plans, overrides = service.planner.plans(weeks[0][0], weeks[-1][-1])
+        with store.connect() as db:
+            rules, daily = store.settings(db), load_overrides(db)
         return render_template("plans.html", title="计划管理", subtitle="按天调整默认、打卡与请假", active="calendar", first=first,
                                weeks=weeks, plans=plans, overrides=overrides, today=today,
                                previous=(first-timedelta(days=1)).strftime("%Y-%m"), following=(first+timedelta(days=32)).strftime("%Y-%m"),
-                               is_workday=lambda day: workday(store.settings(), overrides, day))
+                               is_workday=lambda day: any(w["enabled"] for w in effective_schedule(rules, daily, day).values()))
 
     @app.route("/plans/edit", methods=["GET", "POST"])
     def edit_plan():
         today = service.clock().date()
+        fields = request.form if request.method == "POST" else request.args
         try:
-            start = date.fromisoformat(request.values.get("day", today.isoformat()))
+            start = date.fromisoformat(fields.get("day", today.isoformat()))
             end = date.fromisoformat(request.form.get("end", start.isoformat()))
         except ValueError:
             abort(400, description="日期不正确")
-        batch = request.values.get("batch") == "1"
+        batch = fields.get("batch") == "1"
+        schedule = service.planner.schedule(start, initial=True)
+        mode = None
         if request.method == "POST":
+            mode = request.form.get("mode", "default")
+            if mode == "work" and not batch:
+                schedule = {slot: {"enabled": request.form.get(slot+"_enabled") == "1",
+                                   "start": request.form.get(slot+"_start", ""),
+                                   "end": request.form.get(slot+"_end", "")} for slot in SLOTS}
             try:
-                service.planner.override(start, end if batch else start, request.form.get("mode", "default"))
+                if not batch and request.form.get("loaded_day") != start.isoformat():
+                    schedule = service.planner.schedule(start, initial=True)
+                    mode = None
+                    raise ValueError("日期已变更，请先加载该日期的计划后再保存")
+                service.planner.override(start, end if batch else start, mode,
+                                         schedule if mode == "work" and not batch else None)
             except ValueError as error:
                 flash(str(error), "error")
             else:
@@ -168,8 +183,8 @@ def create_app(directory=None, *, store=None, service=None, secure_cookie=True):
                 return redirect(url_for("plans_page", month=start.strftime("%Y-%m")), code=303)
         plans, overrides = service.planner.plans(start, start)
         return render_template("edit-plan.html", title="批量调整" if batch else "每日计划", subtitle="修改后更新未来有效计划", active="calendar",
-                               back=url_for("plans_page"), start=start, today=today, batch=batch,
-                               mode=overrides.get(start.isoformat(), "default"), plans=plans)
+                               back=url_for("plans_page"), start=start, end=end, today=today, batch=batch, schedule=schedule,
+                               mode=mode if mode is not None else overrides.get(start.isoformat(), "default"), plans=plans)
 
     @app.route("/settings/<tab>", methods=["GET", "POST"])
     def settings_page(tab):
@@ -211,6 +226,15 @@ def create_app(directory=None, *, store=None, service=None, secure_cookie=True):
                     values["weekdays"] = [int(value) for value in request.form.getlist("weekdays")]
                     for slot in SLOTS:
                         values[slot] = {"enabled": request.form.get(slot+"_enabled") == "1", "start": request.form.get(slot+"_start", ""), "end": request.form.get(slot+"_end", "")}
+                    values["weekday_overrides"] = {}
+                    for weekday in range(1, 6):
+                        windows = {}
+                        for slot in SLOTS:
+                            prefix = f"weekday_{weekday}_{slot}"
+                            if request.form.get(prefix+"_custom") == "1":
+                                windows[slot] = {key: request.form.get(prefix+"_"+key, "") for key in ("start", "end")}
+                        if windows:
+                            values["weekday_overrides"][str(weekday)] = windows
                 else:
                     values = {"bark_server": request.form.get("bark_server", "").strip().rstrip("/"), "public_url": request.form.get("public_url", "").strip().rstrip("/")}
                     for value in values.values():
@@ -237,6 +261,9 @@ def create_app(directory=None, *, store=None, service=None, secure_cookie=True):
                     return redirect(url_for("notice_page", identifier=identifier), code=303)
             except (ValueError, TypeError) as error:
                 flash(str(error) if str(error) else "配置格式不正确", "error")
+                if tab == "schedule":
+                    return render_template("settings.html", title="自动计划设置", subtitle="默认配置与星期配置", tab=tab,
+                                           active="calendar", back=url_for("plans_page"), schedule_settings={**store.settings(), **values})
             else:
                 flash("密码已修改，当前设备继续登录" if tab == "account" else "设置已保存")
             return redirect(url_for("settings_page", tab=tab, check="1" if tab == "device" else None), code=303)
