@@ -24,6 +24,8 @@ flowchart LR
 
 计划和业务记录以管理端为准，手机执行状态以控制端为准。控制端只受理即时请求，业务上的再次执行由管理端根据用户操作创建。
 
+三层计划配置由管理端统一解析：默认配置、星期时间配置、具体日期配置依次覆盖。规则解析同时用于页面、计划生成和派发校验，控制端接口不随计划层级变化。目标设计及迁移方式见[管理端设计](04-manager-design.md#3-计划生成与变更)。
+
 ## 3. 技术与模块
 
 两端使用 Python、Flask、Waitress 和 SQLite。管理端使用 Jinja2 渲染页面，以进程内线程和队列处理后台任务。
@@ -33,7 +35,7 @@ flowchart LR
 | `controller/main.py` | 控制端配置、ADB 封装、请求存储、执行流程和 HTTP API |
 | `manager/src/cli.py` | 管理端服务入口、进程锁、日志、代理配置及退出处理 |
 | `manager/src/web.py` | 页面路由、登录、表单校验和截图访问 |
-| `manager/src/planner.py` | 周规则、日期覆盖、随机计划生成及规则变更 |
+| `manager/src/planner.py` | 三层计划配置解析、随机计划生成及规则变更 |
 | `manager/src/tasks.py` | 任务队列、执行与恢复、调度、设备监测和通知 |
 | `manager/src/controller_client.py` | 控制端 API 客户端、超时、响应与截图校验 |
 | `manager/src/storage.py` | 设置、计划、业务记录和派发快照的持久化 |
